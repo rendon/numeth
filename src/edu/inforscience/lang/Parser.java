@@ -28,16 +28,23 @@ public class Parser {
   private String token;
   private int tokenType;
   private int errorCode;
+  private int index;
+  private boolean isValidationMode;
 
   private HashMap<String, Double> variables;
+  private HashMap<String, Double> constants;
+
+
   private TreeSet<String> functions;
 
   public static final double EPS                = 1e-8;
 
   public static final int DELIMITER             = 0x00000001;
   public static final int VARIABLE              = 0x00000002;
-  public static final int FUNCTION              = 0x00000003;
-  public static final int NUMBER                = 0x00000004;
+  public static final int CONSTANT              = 0x00000003;
+  public static final int FUNCTION              = 0x00000004;
+  public static final int NUMBER                = 0x00000005;
+  public static final int UNDEFINED             = 0x00000006;
 
   public static final int SUCCESS               = 0x00000000;
   public static final int NO_EXPRESSION         = 0x00000001;
@@ -61,17 +68,19 @@ public class Parser {
   private void initialize()
   {
     variables = new HashMap<String, Double>();
+    constants = new HashMap<String, Double>();
     functions = new TreeSet<String>();
 
-    setErrorCode(SUCCESS);
+    constants.put("pi", Math.PI);
+    constants.put("e", Math.E);
 
-    variables.put("pi", Math.PI);
-    variables.put("e", Math.E);
     String[] temp = new String[] {"sin", "cos", "tan", "log", "ln", "exp",
-      "abs", "sqrt"};
+                                  "abs", "sqrt"};
 
     for (String function : temp)
       functions.add(function);
+
+    setErrorCode(SUCCESS);
   }
 
   public void setVariable(String variable, double value)
@@ -81,32 +90,36 @@ public class Parser {
 
   private boolean nextToken()
   {
+    int length = expression.length();
     token = "";
-    tokenType = 0;
+    tokenType = UNDEFINED;
 
-    if (expression.length() == 0)
+    if (index >= length)
       return false;
-    while (expression.length() > 0 && expression.charAt(0) == ' ')
-      expression.deleteCharAt(0);
+    while (index < length && expression.charAt(index) == ' ')
+      index++;
 
-    if ("+-*/%^!=()".contains("" + expression.charAt(0))) {
+    if (index < length && isDelimiter(expression.charAt(index))) {
       tokenType = DELIMITER;
-      token += expression.charAt(0);
-      expression.deleteCharAt(0);
-    } else if (Character.isLetter(expression.charAt(0))) {
-      while (expression.length() > 0 && !isDelimiter((expression.charAt(0)))) {
-        token += expression.charAt(0);
-        expression.deleteCharAt(0);
+      token += expression.charAt(index);
+      index++;
+    } else if (index < length && Character.isLetter(expression.charAt(index))) {
+      while (index < length && !isDelimiter((expression.charAt(index)))) {
+        token += expression.charAt(index);
+        index++;
       }
 
       if (functions.contains(token))
         tokenType = FUNCTION;
+      else if (constants.get(token) != null)
+        tokenType = CONSTANT;
       else
         tokenType = VARIABLE;
-    } else if (Character.isDigit(expression.charAt(0))) {
-      while (expression.length() > 0 && !isDelimiter((expression.charAt(0)))) {
-        token += expression.charAt(0);
-        expression.deleteCharAt(0);
+
+    } else if (index < length && Character.isDigit(expression.charAt(index))) {
+      while (index < length && !isDelimiter((expression.charAt(index)))) {
+        token += expression.charAt(index);
+        index++;
       }
 
       tokenType = NUMBER;
@@ -121,6 +134,14 @@ public class Parser {
 
   public void setErrorCode(int code) {
     errorCode = code;
+  }
+
+  public boolean isValidationMode() {
+    return isValidationMode;
+  }
+
+  public void setValidationMode(boolean validationMode) {
+    isValidationMode = validationMode;
   }
 
   private boolean isDelimiter(char c)
@@ -230,7 +251,14 @@ public class Parser {
       result = Double.parseDouble(token);
       nextToken();
     } else if (tokenType == VARIABLE) {
-      result = variables.get(token);
+      if (isValidationMode()) {
+        result = 0;
+      } else {
+        result = variables.get(token);
+      }
+      nextToken();
+    } else if (tokenType == CONSTANT) {
+      result = constants.get(token);
       nextToken();
     } else if (tokenType == FUNCTION) {
       String function = token;
@@ -293,10 +321,17 @@ public class Parser {
     return result;
   }
 
+  public double evaluate(Function f, String var, double val) {
+    setVariable(var, val);
+    return evaluate(f.getDefinition());
+  }
+
+
   public double evaluate(String expression)
   {
-    this.expression = new StringBuffer(expression);
     double result = 0;
+    this.expression = new StringBuffer(expression);
+    index = 0;
 
     nextToken();
     if (token.equals("")) {
@@ -313,6 +348,15 @@ public class Parser {
 
     return result;
   }
+
+  public boolean validate(String expression)
+  {
+    setValidationMode(true);
+    evaluate(expression);
+    setValidationMode(false);
+    return getErrorCode() == SUCCESS;
+  }
+
 
 }
 

@@ -18,11 +18,15 @@
 */
 package edu.inforscience.graphics;
 
+import edu.inforscience.lang.Function;
+import edu.inforscience.lang.Parser;
+
 import javax.swing.JPanel;
 import java.awt.*;
 import java.awt.event.*;
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.util.Vector;
 
 public class Plane extends JPanel implements MouseListener,
                                              MouseWheelListener,
@@ -43,11 +47,14 @@ public class Plane extends JPanel implements MouseListener,
   private boolean firstTime;
   private boolean showAxis;
 
+  private Vector<Function> functions;
+
   public Plane()
   {
     addMouseListener(this);
     addMouseWheelListener(this);
     firstTime = true;
+    functions = new Vector<Function>();
 
     // Grid drawing settings
     gridInterval = 0.5;
@@ -70,10 +77,36 @@ public class Plane extends JPanel implements MouseListener,
 
     drawAxes(g2d);
     drawGrid(g2d);
+
     g2d.setStroke(new BasicStroke(1));
-    drawLine(g2d, ix(0), iy(0), ix(3), iy(2));
-    drawLine(g2d, ix(3), iy(2), ix(6), iy(0));
-    drawLine(g2d, ix(6), iy(0), ix(0), iy(0));
+    g2d.setColor(Color.RED);
+
+    Parser parser = new Parser();
+    double start = fx(0);
+    double end = fx(getWidth() - 1);
+    for (Function f : functions) {
+      for (double x = start; x < end; x += 0.5) {
+        double y = parser.evaluate(f, "x", x);
+        putPixel(g2d, ix(x), iy(y));
+      }
+    }
+  }
+
+  public void addFunction(Function f)
+  {
+    functions.add(f);
+  }
+
+  public void removeFunction(Function f)
+  {
+    if (f != null)
+      functions.remove(f);
+  }
+
+
+  public void plot()
+  {
+    repaint();
   }
 
 

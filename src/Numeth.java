@@ -25,20 +25,21 @@ public class Numeth {
 
   public static void main(String[] args) throws IOException
   {
-    //MainWindow window = new MainWindow();
-    //window.setVisible(true);
+    MainWindow window = new MainWindow();
+    window.setVisible(true);
 
-    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+    //BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
-    System.out.print(">> ");
-    String expression = reader.readLine();
-    Parser parser = new Parser(expression);
+    //System.out.print(">> ");
+    //String expression = reader.readLine();
 
-    System.out.println("x\t\tf(x)");
-    for (double x = -5; x <= 5; x += 0.5) {
-      parser.setVariable("x", x);
-      System.out.println(x + "  " + parser.evaluate());
-    }
+    //Parser parser = new Parser(expression);
+
+    //System.out.println("x\t\tf(x)");
+    //for (double x = -5; x <= 5; x += 0.5) {
+    //  parser.setVariable("x", x);
+    //  System.out.println(x + "  " + parser.evaluate());
+    //}
 
     //System.out.println(parser.evaluate("2^0/0! - 2^2/2! + 2^4/4! - 2^6/6! + 2^8/8! - 2^10/10!"));
 

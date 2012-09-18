@@ -21,7 +21,7 @@ package edu.inforscience.math;
 public class Math {
 
   public static double PI   = java.lang.Math.PI;
-  public static double E    = Math.E;
+  public static double E    = java.lang.Math.E;
 
 
   public static long factorial(int n)
