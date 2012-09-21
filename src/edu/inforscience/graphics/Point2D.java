@@ -18,6 +18,9 @@
 */
 package edu.inforscience.graphics;
 
+/**
+ * A 2D Point class to use with logical coordinates.
+ */
 public class Point2D {
   private double  px,
     py;
@@ -39,13 +42,21 @@ public class Point2D {
 
   public double x() { return px; }
   public double y() { return py; }
+
+  /**
+   * Computes the distance between two points, this and point.
+   * @param point Point2D object
+   * @return double, distance between this and point
+   */
   public double distanceTo(Point2D point)
   {
     return Math.sqrt((px - point.x()) * (px - point.x()) +
                      (py - point.y()) * (py - point.y()));
   }
 
-  // Returns the distance from origin to this point
+  /**
+   *  Returns the distance from origin to this point
+   */
   public double distance()
   {
     return Math.sqrt(x() * x() + y() * y());

@@ -60,11 +60,9 @@ public class MainWindow extends JFrame {
   private JButton zoomResetButton;
   private JButton showAxisButton;
   private JButton showGridButton;
-  private JButton movePlaneButton;
 
   private Locale currentLocale;
   private ResourceBundle messages;
-
 
   private Function function;
 
@@ -73,11 +71,16 @@ public class MainWindow extends JFrame {
     super("Numeth");
     setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     setLayout(new BorderLayout());
-    setSize(1000, 600);
+    setSize(1024, 768);
     setLocationRelativeTo(null);
 
+
+    // Action handler object
+    ActionHandler actionHandler = new ActionHandler();
+
+
     // Resources for internationalization
-    currentLocale = new Locale("es", "MX");
+    currentLocale = new Locale("en", "US");
     messages = ResourceBundle.getBundle("Messages", currentLocale);
 
     fileMenu = new JMenu(messages.getString("MainWindow.fileMenu"));
@@ -92,13 +95,16 @@ public class MainWindow extends JFrame {
 
     expressionText  = new JTextField(50);
     errorText       = new JTextField(10);
+
+    expressionText.addActionListener(actionHandler);
+
     solveButton = new JButton(messages.getString("MainWindow.solveButton"));
-    solveButton.addActionListener(new ActionHandler());
+    solveButton.addActionListener(actionHandler);
 
     // Tool bar
     toolBar = new JToolBar();
     toolBar.setLayout(new FlowLayout(FlowLayout.LEFT));
-    toolBar.add(new JLabel("<html><i>f(x)</i></html>:"));
+    toolBar.add(new JLabel("<html><i>f(x)</i> = </html>:"));
     toolBar.add(expressionText);
     toolBar.add(new JLabel(messages.getString("MainWindow.errorLabel")));
     toolBar.add(errorText);
@@ -106,10 +112,10 @@ public class MainWindow extends JFrame {
 
     // Method list
     String[] methods = new String[] {messages.getString("Method.bestSuited"),
-                                    messages.getString("Method.linear"),
-                                    messages.getString("Method.bisection"),
-                                    messages.getString("Method.newton.raphson"),
-                                    messages.getString("Method.secant")
+                                     messages.getString("Method.linear"),
+                                     messages.getString("Method.bisection"),
+                                     messages.getString("Method.newton.raphson"),
+                                     messages.getString("Method.secant")
                                   };
 
     methodList = new JComboBox(methods);
@@ -126,13 +132,15 @@ public class MainWindow extends JFrame {
     // Solution log container
     logPane = new JTextPane();
     logPane.setBackground(Color.BLACK);
+    logPane.setForeground(Color.WHITE);
+    logPane.setText("Solution log goes here!");
     JScrollPane logScrollPane = new JScrollPane(logPane,
       JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
       JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
 
     // Solution container
-    String[] sols = new String[] { "[3, 3.5]", "[5.5, 6]", "[10, 10.5]"};
+    String[] sols = new String[] { };
     solutionsList = new JList(sols);
 
     JPanel solutionsPanel = new JPanel();
@@ -157,22 +165,27 @@ public class MainWindow extends JFrame {
     leftPanel.setDividerLocation(350);
 
     // Plane container
-    zoomInButton = new JButton(new ImageIcon("pictures/zoom-in.png"));
-    zoomOutButton = new JButton(new ImageIcon("pictures/zoom-out.png"));
+    zoomInButton    = new JButton(new ImageIcon("pictures/zoom-in.png"));
+    zoomOutButton   = new JButton(new ImageIcon("pictures/zoom-out.png"));
     zoomResetButton = new JButton(new ImageIcon("pictures/zoom-reset.png"));
-    showAxisButton = new JButton(new ImageIcon("pictures/show-axis.png"));
-    showGridButton = new JButton(new ImageIcon("pictures/show-grid.png"));
-    movePlaneButton = new JButton(new ImageIcon("pictures/move-plane.png"));
+    showAxisButton  = new JButton(new ImageIcon("pictures/show-axis.png"));
+    showGridButton  = new JButton(new ImageIcon("pictures/show-grid.png"));
+
+    showAxisButton.addActionListener(actionHandler);
+    showGridButton.addActionListener(actionHandler);
+    zoomOutButton.addActionListener(actionHandler);
+    zoomResetButton.addActionListener(actionHandler);
+    zoomInButton.addActionListener(actionHandler);
+
+
 
     planeToolbar = new JToolBar();
     planeToolbar.setLayout(new FlowLayout(FlowLayout.LEFT));
     planeToolbar.add(showAxisButton);
     planeToolbar.add(showGridButton);
-    planeToolbar.add(movePlaneButton);
     planeToolbar.add(zoomOutButton);
     planeToolbar.add(zoomResetButton);
     planeToolbar.add(zoomInButton);
-
 
 
     plane = new Plane();
@@ -195,14 +208,32 @@ public class MainWindow extends JFrame {
   class ActionHandler implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent event) {
-      if (event.getSource() == solveButton) {
+      if (event.getSource() == solveButton ||
+          event.getSource() == expressionText) {
+
         String expression = expressionText.getText();
         Parser parser = new Parser();
-        if (parser.validate(expression)) {
+        if (!expression.equals("") && parser.validate(expression)) {
           function = new Function(expression);
+          plane.clearFunctions();
           plane.addFunction(function);
           plane.plot();
         }
+
+      } else if (event.getSource() == showAxisButton) {
+        plane.toggleShowAxis();
+
+      } else if (event.getSource() == showGridButton) {
+        plane.toggleShowGrid();
+
+      } else if (event.getSource() == zoomOutButton) {
+        plane.zoomOut(plane.getWidth()/2, plane.getHeight()/2);
+
+      } else if (event.getSource() == zoomResetButton) {
+        plane.resetZoom();
+
+      } else if (event.getSource() == zoomInButton) {
+        plane.zoomIn(plane.getWidth()/2, plane.getHeight()/2);
 
       }
     }

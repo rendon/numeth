@@ -18,6 +18,9 @@
 */
 package edu.inforscience.math;
 
+/**
+ * My Extended Math class.
+ */
 public class Math {
 
   public static double PI   = java.lang.Math.PI;
@@ -70,5 +73,44 @@ public class Math {
     return euler;
   }
 
+  public static double sin(double theta)
+  {
+    return java.lang.Math.sin(theta);
+  }
+
+  public static double cos(double theta)
+  {
+    return java.lang.Math.cos(theta);
+  }
+
+  public static double tan(double theta)
+  {
+    return java.lang.Math.tan(theta);
+  }
+
+  public static double log10(double x)
+  {
+    return java.lang.Math.log10(x);
+  }
+
+  public static double log(double x)
+  {
+    return java.lang.Math.log(x);
+  }
+
+  public static double abs(double x)
+  {
+    return java.lang.Math.abs(x);
+  }
+
+  public static double exp(double x)
+  {
+    return java.lang.Math.exp(x);
+  }
+
+  public static double sqrt(double x)
+  {
+    return java.lang.Math.sqrt(x);
+  }
 }
 

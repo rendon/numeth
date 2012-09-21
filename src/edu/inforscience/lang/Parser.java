@@ -20,6 +20,7 @@ package edu.inforscience.lang;
 
 import java.util.HashMap;
 import java.util.TreeSet;
+import java.util.logging.*;
 import edu.inforscience.math.Math;
 
 public class Parser {
@@ -49,10 +50,13 @@ public class Parser {
   public static final int SUCCESS               = 0x00000000;
   public static final int NO_EXPRESSION         = 0x00000001;
   public static final int LAST_TOKEN_NOT_NULL   = 0x00000002;
-  public static final int INVALID_EXPRESSION  = 0x00000003;
-  public static final int INVALID_NUMBER      = 0x00000004;
-  public static final int INVALID_FUNCTION    = 0x00000005;
+  public static final int INVALID_EXPRESSION    = 0x00000003;
+  public static final int INVALID_NUMBER        = 0x00000004;
+  public static final int INVALID_FUNCTION      = 0x00000005;
+  public static final int UNDEFINED_VARIABLE    = 0x00000005;
+  public static final int UNDEFINED_VALUE       = 0x00000005;
 
+  private static Logger logger = Logger.getLogger("edu.inforscience.lang");
 
   public Parser()
   {
@@ -65,6 +69,9 @@ public class Parser {
   }
 
 
+  /**
+   * Initialize data members, add predefined constants and functions.
+   */
   private void initialize()
   {
     variables = new HashMap<String, Double>();
@@ -83,11 +90,21 @@ public class Parser {
     setErrorCode(SUCCESS);
   }
 
+  /**
+   * Sets a variable and their corresponding value, useful when we need evaluate
+   * a function with a specific parameter.
+   * @param variable variable name
+   * @param value variable value
+   */
   public void setVariable(String variable, double value)
   {
     variables.put(variable, value);
   }
 
+  /**
+   * Returns the next token in the expression, number, variable, operator, etc.
+   * @return String, the next token or empty string if we have finished.
+   */
   private boolean nextToken()
   {
     int length = expression.length();
@@ -128,22 +145,46 @@ public class Parser {
     return true;
   }
 
+  /**
+   * Returns the error code of the previous operation.
+   * @return int, 0 if all it's fine, different than zero otherwise.
+   */
   public int getErrorCode() {
     return errorCode;
   }
 
+  /**
+   * Sets the error code for the current operation.
+   * @param code the error code: SUCCESS, NO_EXPRESSION, INVALID_NUMBER,
+   *             LAST_TOKEN_NOT_NULL, INVALID_EXPRESSION, INVALID_FUNCTION,
+   *             UNDEFINED_VARIABLE, UNDEFINED_VALUE.
+   */
   public void setErrorCode(int code) {
     errorCode = code;
   }
 
+  /**
+   * Returns the operation mode, evaluation or validation.
+   * @return boolean, true if current mode is validation, false otherwise
+   */
   public boolean isValidationMode() {
     return isValidationMode;
   }
 
+  /**
+   * Sets validation mode status.
+   * @param validationMode boolean, true to enable validation mode,
+   *                       false to disable
+   */
   public void setValidationMode(boolean validationMode) {
     isValidationMode = validationMode;
   }
 
+  /**
+   * Determines if c is a delimiter.
+   * @param c a token
+   * @return true if c is a delimiter, false otherwise
+   */
   private boolean isDelimiter(char c)
   {
     if ("+-/*%^!=() ".contains("" + c) ||
@@ -153,6 +194,14 @@ public class Parser {
     return false;
   }
 
+  /**
+   * Evaluates additions and subtractions in the expression. Here begins the
+   * parsing process and follows the following production:
+   *  expression  -> term [+term] [-term]
+   *  term        -> factor[*factor] [/factor]
+   *  factor      -> number, variable, (expression)
+   * @return double, the sum of all terms
+   */
   private double sumAndSubtraction()
   {
     String operator;
@@ -172,6 +221,15 @@ public class Parser {
     return result;
   }
 
+  /**
+   * Returns the next term in the expression, according to the following
+   * production:
+   *
+   *  expression  -> term [+term] [-term]
+   *  term        -> factor[*factor] [/factor]
+   *  factor      -> number, variable, (expression)
+   * @return double, next term
+   */
   private double productAndDivision()
   {
     String operator;
@@ -193,6 +251,11 @@ public class Parser {
     return result;
   }
 
+  /**
+   * Check for factorial or exponentiation operation for the current value and
+   * returns the result, or the value itself.
+   * @return double, n! or n^p or n.
+   */
   private double exponentAndFactorial()
   {
     double result = 0;
@@ -210,6 +273,11 @@ public class Parser {
     return result;
   }
 
+  /**
+   * Check for plus or minus sign and returns the the result
+   * after applying the sign.
+   * @return double, +n or -n
+   */
   private double sign()
   {
     String operator = "";
@@ -227,6 +295,10 @@ public class Parser {
     return result;
   }
 
+  /**
+   * Evaluate a sub expression( '('expression')' ) and returns the result.
+   * @return double, the result of evaluating the sub expression
+   */
   private double subExpression()
   {
     double result;
@@ -237,6 +309,7 @@ public class Parser {
         setErrorCode(INVALID_EXPRESSION);
         return 0;
       }
+
       nextToken();
     } else {
       result = atom();
@@ -244,6 +317,10 @@ public class Parser {
     return result;
   }
 
+  /**
+   * Returns the value of the current factor, number, variable or function.
+   * @return double, the value of the current factor
+   */
   private double atom()
   {
     double result = 0;
@@ -254,7 +331,10 @@ public class Parser {
       if (isValidationMode()) {
         result = 0;
       } else {
-        result = variables.get(token);
+        if (!variables.containsKey(token))
+          setErrorCode(UNDEFINED_VARIABLE);
+        else
+          result = variables.get(token);
       }
       nextToken();
     } else if (tokenType == CONSTANT) {
@@ -270,40 +350,58 @@ public class Parser {
 
       double parameter = subExpression();
 
-      if (function.equals("sin")) {
-        double theta = parameter%Math.PI;
-        result = Math.sin(theta, 15);
-
-
-        /************** WARNING: PUT SPECIAL ATTENTION HERE *******************/
-        int d = (int)((parameter - theta)/Math.PI + EPS); // add eps
-        if (d%2 == 1 && parameter > d * Math.PI)
-          result = - result;
-
-
-      } else if (function.equals("cos")) {
-        double theta = parameter - parameter%Math.PI;
-        result = Math.cos(theta, 15);
-
-        /************** WARNING: PUT SPECIAL ATTENTION HERE *******************/
-        int d = (int)((parameter - theta)%Math.PI + EPS);
-        if (d%2 == 1 && parameter > d * Math.PI)
-          result = -result;
-      } else if (function.equals("tan")) {
-        result = java.lang.Math.tan(parameter);
-      } else if (function.equals("log")) {
-        result = java.lang.Math.log10(parameter);
-      } else if (function.equals("ln")) {
-        result = java.lang.Math.log(parameter);
-      } else if (function.equals("abs")) {
-        result = java.lang.Math.abs(result);
-      } else if (function.equals("exp")) {
-        result = java.lang.Math.exp(parameter);
-      } else if (function.equals("sqrt")) {
-        result = java.lang.Math.sqrt(parameter);
+      if (isValidationMode()) {
+        if (!functions.contains(function)) {
+          logger.info("function = " + function);
+          setErrorCode(INVALID_FUNCTION);
+        }
+        return 0;
       }
 
-      nextToken();
+      if (function.equals("sin")) {
+        double theta = parameter;
+        result = java.lang.Math.sin(theta);
+
+      } else if (function.equals("cos")) {
+        double theta = parameter;
+        result = java.lang.Math.cos(theta);
+
+      } else if (function.equals("tan")) {
+        result = Math.tan(parameter);
+
+      } else if (function.equals("log")) {
+        if (parameter <= 0) {
+          setErrorCode(UNDEFINED_VALUE);
+          return 0;
+        } else {
+          result = Math.log10(parameter);
+        }
+
+      } else if (function.equals("ln")) {
+        if (parameter <= 0) {
+          setErrorCode(UNDEFINED_VALUE);
+          result = 0;
+        } else {
+          result = Math.log(parameter);
+        }
+
+      } else if (function.equals("abs")) {
+        result = Math.abs(parameter);
+
+      } else if (function.equals("exp")) {
+        result = Math.exp(parameter);
+
+      } else if (function.equals("sqrt")) {
+        if (parameter < 0) {
+          setErrorCode(UNDEFINED_VALUE);
+        } else {
+        result = Math.sqrt(parameter);
+        }
+
+      }
+
+      // BUG: this call to nextToken is wrong
+      //nextToken();
     } else {
       setErrorCode(INVALID_NUMBER);
       return 0;
@@ -312,6 +410,12 @@ public class Parser {
     return result;
   }
 
+  /**
+   * Evaluates the expression passed in the constructor an returns the result.
+   * If there exists variables in the expression it's assumed that they have
+   * been initialized, e.g. with setVariable(var, val).
+   * @return double, the result of evaluating the expression
+   */
   public double evaluate()
   {
     String temp = expression.toString();
@@ -321,18 +425,33 @@ public class Parser {
     return result;
   }
 
-  public double evaluate(Function f, String var, double val) {
-    setVariable(var, val);
+  /**
+   * Returns the result of evaluating function f with variable = value.
+   * @param f the function to evaluate
+   * @param variable the name of the function's parameter, e.g. "x"
+   * @param value the value of the parameter, e.g. x = 3
+   * @return double, the result of evaluating the f
+   */
+  public double evaluate(Function f, String variable, double value) {
+    setVariable(variable, value);
     return evaluate(f.getDefinition());
   }
 
 
+  /**
+   * Returns the value of evaluating the expression passed as parameter.
+   * If there exists variables in the expression it's assumed that they have
+   * been initialized, e.g. with setVariable(var, val).
+   * @param expression the expression to evaluate
+   * @return double, result of evaluating the expression
+   */
   public double evaluate(String expression)
   {
     double result = 0;
     this.expression = new StringBuffer(expression);
     index = 0;
 
+    setErrorCode(SUCCESS);
     nextToken();
     if (token.equals("")) {
       setErrorCode(NO_EXPRESSION);
@@ -349,6 +468,12 @@ public class Parser {
     return result;
   }
 
+  /**
+   * Tests if expression is valid, e.g. balanced parentheses, valid operations,
+   * valid functions, valid constants, etc.
+   * @param expression the expression to examine
+   * @return boolean, true if the expression is valid, false otherwise
+   */
   public boolean validate(String expression)
   {
     setValidationMode(true);

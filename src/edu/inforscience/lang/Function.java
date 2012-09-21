@@ -1,7 +1,7 @@
 /*
     Numeth is simple application to solve many mathematical problems numerically.
     
-    Copyright (C) 2012 Rafael Rendón Pablo <smart.rendon@gmail.com>
+    Copyright (C) 2012 Rafael RendÃ³n Pablo <smart.rendon@gmail.com>
     
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,6 +18,9 @@
 */
 package edu.inforscience.lang;
 
+/**
+ * A basic function class.
+ */
 public class Function {
   private int degree;
   private String definition;

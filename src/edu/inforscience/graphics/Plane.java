@@ -27,6 +27,7 @@ import java.awt.event.*;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.Vector;
+import java.util.logging.*;
 
 public class Plane extends JPanel implements MouseListener,
                                              MouseWheelListener,
@@ -46,13 +47,18 @@ public class Plane extends JPanel implements MouseListener,
 
   private boolean firstTime;
   private boolean showAxis;
+  private boolean showGrid;
+
+  private Point startDrag;
 
   private Vector<Function> functions;
+  private static Logger logger = Logger.getLogger("edu.inforscience.lang");
 
   public Plane()
   {
     addMouseListener(this);
     addMouseWheelListener(this);
+    addMouseMotionListener(this);
     firstTime = true;
     functions = new Vector<Function>();
 
@@ -75,28 +81,73 @@ public class Plane extends JPanel implements MouseListener,
       firstTime = false;
     }
 
-    drawAxes(g2d);
-    drawGrid(g2d);
+    if (isShowAxis())
+      drawAxis(g2d);
+    if (isShowGrid())
+      drawGrid(g2d);
 
-    g2d.setStroke(new BasicStroke(1));
-    g2d.setColor(Color.RED);
+    g2d.setColor(Color.BLUE);
+    //g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+    //                     RenderingHints.VALUE_ANTIALIAS_ON);
+    g2d.setStroke(new BasicStroke(1f));
 
+    logger.info("pixel size = " + pixelSize);
     Parser parser = new Parser();
     double start = fx(0);
     double end = fx(getWidth() - 1);
+    double middle = (start + end)/2;
     for (Function f : functions) {
-      for (double x = start; x < end; x += 0.5) {
-        double y = parser.evaluate(f, "x", x);
-        putPixel(g2d, ix(x), iy(y));
+      double dx = fx(1) - fx(0);
+
+      // From the middle to the left
+      double x0, y0, x1, y1;
+      for (x0 = middle; x0 - dx >= start; x0 -= dx) {
+        y0 = parser.evaluate(f, "x", x0);
+
+        if (parser.getErrorCode() != Parser.SUCCESS)
+          continue;
+
+        x1 =  x0 - dx;
+        y1 = parser.evaluate(f, "x", x1);
+
+        if (parser.getErrorCode() != Parser.SUCCESS)
+          continue;
+
+        g2d.drawLine(ix(x0), iy(y0), ix(x0), iy(y1));
       }
+
+      // From the middle to the right
+      for (x0 = middle; x0 + dx <= end; x0 += dx) {
+        y0 = parser.evaluate(f, "x", x0);
+
+        if (parser.getErrorCode() != Parser.SUCCESS)
+          continue;
+
+        x1 =  x0 - dx;
+        y1 = parser.evaluate(f, "x", x1);
+
+        if (parser.getErrorCode() != Parser.SUCCESS)
+          continue;
+
+        g2d.drawLine(ix(x0), iy(y0), ix(x0), iy(y1));
+      }
+
     }
   }
 
+  /**
+   * Add the function f to the functions list to be plotted.
+   * @param f a Function object
+   */
   public void addFunction(Function f)
   {
     functions.add(f);
   }
 
+  /**
+   * Remove function f from the functions list to be plotted.
+   * @param f a Function object
+   */
   public void removeFunction(Function f)
   {
     if (f != null)
@@ -104,66 +155,21 @@ public class Plane extends JPanel implements MouseListener,
   }
 
 
+  /**
+   * Removes all the functions in the functions list.
+   */
+  public void clearFunctions()
+  {
+    functions.clear();
+  }
+
+
+  /**
+   * Calls to paintComponent() to draw the functions.
+   */
   public void plot()
   {
     repaint();
-  }
-
-
-  void putPixel(Graphics2D g2d, int x, int y)
-  {
-    g2d.drawLine(x, y, x, y);
-  }
-
-  void drawLine(Graphics2D g2d, int xP, int yP, int xQ, int yQ)
-  {
-    int c, m, d = 0, x = xP, y = yP;
-    int dx = xQ - xP, dy = yQ - yP;
-    int xIncrement = 1, yIncrement = 1;
-
-    if (dx < 0) {
-      xIncrement = -1;
-      dx = -dx;
-    }
-
-    if (dy < 0) {
-      yIncrement = -1;
-      dy = -dy;
-    }
-
-    if (dy <= dx) {
-      c = dx + dx;
-      m = dy + dy;
-      if (xIncrement < 0) dx++;
-
-      while (true) {
-        putPixel(g2d, x, y);
-        if (x == xQ) break;
-        x += xIncrement;
-        d += m;
-
-        if (d >= dx) {
-          y += yIncrement;
-          d -= c;
-        }
-      }
-    } else {
-      c = dy + dy;
-      m = dx + dx;
-
-      if (yIncrement < 0) dy++;
-      while (true) {
-        putPixel(g2d, x, y);
-        if (y == yQ) break;
-        y += yIncrement;
-        d += m;
-
-        if (d >= dy) {
-          x += xIncrement;
-          d -= c;
-        }
-      }
-    }
   }
 
   /**
@@ -179,7 +185,49 @@ public class Plane extends JPanel implements MouseListener,
   public void setShowAxis(boolean showAxis)
   {
     this.showAxis = showAxis;
+    repaint();
   }
+
+  /**
+   * Toggle showAxis state.
+   */
+  public void toggleShowAxis()
+  {
+    showAxis = !showAxis;
+    repaint();
+  }
+
+
+  /**
+   * Returns true if to draw grid or false if not.
+   * @return true or false, draw or not draw grid
+   */
+  public boolean isShowGrid()
+  {
+    return showGrid;
+  }
+
+  /**
+   * Sets if to draw grid or not.
+   * @param showGrid boolean, true to draw grid, false if not.
+   */
+  public void setShowGrid(boolean showGrid)
+  {
+    this.showGrid = showGrid;
+    repaint();
+  }
+
+
+  /**
+   * Toggle showGrid state.
+   */
+  public void toggleShowGrid()
+  {
+    showGrid = !showGrid;
+    repaint();
+  }
+
+
 
   /**
    * Initialize the variables needed to use isotropic mapping mode(Computer
@@ -249,8 +297,24 @@ public class Plane extends JPanel implements MouseListener,
   }
 
 
-  public double fx(int x) { return (double)(x - centerX) * pixelSize; }
-  public double fy(int y) { return (double)(centerY - y) * pixelSize; }
+  /**
+   * Returns the logical-coordinate of x.
+   * @param x x-coordinate in device-coordinates
+   * @return double, logical coordinate of x
+   */
+  public double fx(int x) {
+    return (double)(x - centerX) * pixelSize;
+  }
+
+  /**
+   * Returns the logical-coordinate of y.
+   * @param y y-coordinate in device-coordinates
+   * @return double, logical coordinate of y
+   */
+  public double fy(int y)
+  {
+    return (double)(centerY - y) * pixelSize;
+  }
 
 
   /**
@@ -277,6 +341,9 @@ public class Plane extends JPanel implements MouseListener,
     Point2D previous = new Point2D(fx(mx), fy(my));
     pixelSize += pixelSize/10;
 
+    if (pixelSize > 1e7)
+      return;
+
     int dx = ix(previous.x()) - ix(previous.x(), ps);
     int dy = iy(previous.y()) - iy(previous.y(), ps);
 
@@ -295,6 +362,10 @@ public class Plane extends JPanel implements MouseListener,
   {
     double ps = pixelSize;
     Point2D previous = new Point2D(fx(mx), fy(my));
+
+    if (pixelSize < 1e-7)
+      return;
+
     pixelSize -= pixelSize/10;
 
     int dx = ix(previous.x()) - ix(previous.x(), ps);
@@ -312,6 +383,8 @@ public class Plane extends JPanel implements MouseListener,
   public void resetZoom()
   {
     initGraphics();
+    factorIndex = 0;
+    gridInterval = 0.5;
     repaint();
   }
 
@@ -337,12 +410,12 @@ public class Plane extends JPanel implements MouseListener,
     }
 
     int cX = ix(0);
-    int interval = ix(gridInterval) - cX;
+    int interval = java.lang.Math.max(1, ix(gridInterval) - cX);
     int mod = cX % interval;
     double startX = fx(mod) - (fx(mod) % gridInterval) - gridInterval;
 
     int cY = iy(0);
-    interval = iy(gridInterval) - cY;
+    interval = java.lang.Math.max(1, iy(gridInterval) - cY);
     mod = cY % interval;
     double startY = fy(mod) - (fy(mod) % gridInterval) + gridInterval;
 
@@ -367,7 +440,7 @@ public class Plane extends JPanel implements MouseListener,
    * Draw axes in the plane.
    * @param g2d a Graphics2D object
    */
-  public void drawAxes(Graphics2D g2d)
+  public void drawAxis(Graphics2D g2d)
   {
     double left = fx(0);
     double top = fy(0);
@@ -384,12 +457,12 @@ public class Plane extends JPanel implements MouseListener,
     }
 
     int cX = ix(0);
-    int interval = ix(gridInterval) - cX;
+    int interval = java.lang.Math.max(1, ix(gridInterval) - cX);
     int mod = cX % interval;
     double startX = fx(mod) - (fx(mod) % gridInterval) - gridInterval;
 
     int cY = iy(0);
-    interval = iy(gridInterval) - cY;
+    interval = java.lang.Math.max(1, iy(gridInterval) - cY);
     mod = cY % interval;
     double startY = fy(mod) - (fy(mod) % gridInterval) + gridInterval;
 
@@ -432,14 +505,7 @@ public class Plane extends JPanel implements MouseListener,
       g2d.drawLine(ix(0), iy(i), ix(0) + 12, iy(i));
     }
 
-  }// End of drawAxes()
-
-
-
-
-
-
-
+  }// End of drawAxis()
 
 
 
@@ -457,11 +523,31 @@ public class Plane extends JPanel implements MouseListener,
   public void mouseEntered(MouseEvent event) { }
 
   @Override
-  public void mousePressed(MouseEvent event) { }
+  public void mousePressed(MouseEvent event)
+  {
+    startDrag = event.getPoint();
+  }
 
   /* MouseMotionListener methods. */
+
+  /**
+   * Performs plane dragging.
+   * @param e MouseEvent with coordinates of mouse position
+   */
   @Override
-  public void mouseDragged(MouseEvent e) { }
+  public void mouseDragged(MouseEvent e)
+  {
+    int dx = e.getX() - (int)startDrag.getX();
+    int dy = e.getY() - (int)startDrag.getY();
+
+    if (dx*dx + dy*dy < 50)
+      return;
+
+    startDrag = e.getPoint();
+    centerX += dx;
+    centerY += dy;
+    repaint();
+  }
 
   @Override
   public void mouseMoved(MouseEvent e) { }

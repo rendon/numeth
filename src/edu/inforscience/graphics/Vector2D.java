@@ -18,7 +18,9 @@
 */
 package edu.inforscience.graphics;
 
-
+/**
+ * A 2D Vector class.
+ */
 public class Vector2D {
 
   private double  xComponent,
