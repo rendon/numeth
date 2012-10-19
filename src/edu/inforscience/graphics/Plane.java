@@ -29,6 +29,8 @@ import java.math.MathContext;
 import java.util.Vector;
 import java.util.logging.*;
 
+import java.io.*;
+
 public class Plane extends JPanel implements MouseListener,
                                              MouseWheelListener,
                                              MouseMotionListener {
@@ -54,6 +56,8 @@ public class Plane extends JPanel implements MouseListener,
   private Vector<Function> functions;
   private static Logger logger = Logger.getLogger("edu.inforscience.lang");
 
+  private PrintWriter writer;
+
   public Plane()
   {
     addMouseListener(this);
@@ -67,6 +71,7 @@ public class Plane extends JPanel implements MouseListener,
     factors = new double[] {2, 2, 2.5};
     factorIndex = 0;
     setShowAxis(true);
+    writer = new PrintWriter(System.out, true);
   }
 
 
@@ -91,7 +96,6 @@ public class Plane extends JPanel implements MouseListener,
     //                     RenderingHints.VALUE_ANTIALIAS_ON);
     g2d.setStroke(new BasicStroke(1f));
 
-    logger.info("pixel size = " + pixelSize);
     Parser parser = new Parser();
     double start = fx(0);
     double end = fx(getWidth() - 1);

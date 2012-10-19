@@ -98,6 +98,9 @@ public class Math {
     return java.lang.Math.log(x);
   }
 
+
+
+
   public static double abs(double x)
   {
     return java.lang.Math.abs(x);
@@ -108,9 +111,28 @@ public class Math {
     return java.lang.Math.exp(x);
   }
 
+  public static double pow(double x, double p)
+  {
+    return java.lang.Math.pow(x, p);
+  }
+
   public static double sqrt(double x)
   {
     return java.lang.Math.sqrt(x);
+  }
+
+  public static int sign(double n)
+  {
+    if (n > 0 ) return 1;
+    if (n < 0) return -1;
+
+    return 0;
+  }
+
+  public static double round(double value, int precision)
+  {
+    double p = Math.pow(10, precision);
+    return java.lang.Math.floor(value * p)/p;
   }
 }
 

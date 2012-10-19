@@ -20,11 +20,16 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import edu.inforscience.lang.*;
 
+import java.io.*;
+
 import edu.inforscience.graphics.*;
+import edu.inforscience.math.*;
+import edu.inforscience.math.Math;
 
 public class MainWindow extends JFrame {
   private JMenuBar menuBar;
@@ -65,6 +70,7 @@ public class MainWindow extends JFrame {
   private ResourceBundle messages;
 
   private Function function;
+  private PrintWriter writer;
 
   public MainWindow()
   {
@@ -202,6 +208,7 @@ public class MainWindow extends JFrame {
 
     add(splitPane, BorderLayout.CENTER);
 
+   writer = new PrintWriter(System.out, true);
   }
 
 
@@ -213,11 +220,31 @@ public class MainWindow extends JFrame {
 
         String expression = expressionText.getText();
         Parser parser = new Parser();
+        int method = methodList.getSelectedIndex();
+
         if (!expression.equals("") && parser.validate(expression)) {
           function = new Function(expression);
           plane.clearFunctions();
           plane.addFunction(function);
           plane.plot();
+
+          double epsilon = 1e-3;
+
+          if (!errorText.getText().equals(""))
+            epsilon = Double.parseDouble(errorText.getText());
+
+          //BruteForce bruteForce = new BruteForce(function);
+          //ArrayList<Solution> solutions = bruteForce.solve(-100 - 1e-10,  100);
+
+          Bisection bisection = new Bisection(function);
+          ArrayList<Solution> solutions = bisection.solve(-100 - 1e-10, 100, epsilon);
+          String[] S = new String[solutions.size()];
+          for (int i = 0; i < solutions.size(); i++) {
+            Solution sol = solutions.get(i);
+            S[i] = "" + Math.round(sol.getX(), 6);
+          }
+
+          solutionsList.setListData(S);
         }
 
       } else if (event.getSource() == showAxisButton) {
