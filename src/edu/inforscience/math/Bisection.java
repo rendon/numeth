@@ -26,17 +26,15 @@ public class Bisection {
 
   public static final int MAX_ITERATIONS = 200;
   private Function function;
-  private Parser parser;
 
   public Bisection(Function f)
   {
     function = f;
-    parser = new Parser();
   }
 
   public double f(double x)
   {
-    return parser.evaluate(function, "x", x);
+    return function.evaluate(x);
   }
 
 

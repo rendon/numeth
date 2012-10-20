@@ -52,8 +52,12 @@ public class Plane extends JPanel implements MouseListener,
   private boolean showGrid;
 
   private Point startDrag;
+  private Point2D markPoint; // Used to mark a solution in the plane
+  private boolean showMarkPoint;
 
-  private Vector<Function> functions;
+
+  private Vector<Function> functionList;
+
   private static Logger logger = Logger.getLogger("edu.inforscience.lang");
 
   private PrintWriter writer;
@@ -64,14 +68,33 @@ public class Plane extends JPanel implements MouseListener,
     addMouseWheelListener(this);
     addMouseMotionListener(this);
     firstTime = true;
-    functions = new Vector<Function>();
+    functionList = new Vector<Function>();
 
     // Grid drawing settings
     gridInterval = 0.5;
     factors = new double[] {2, 2, 2.5};
     factorIndex = 0;
     setShowAxis(true);
+    setShowMarkPoint(false);
     writer = new PrintWriter(System.out, true);
+  }
+
+  public Vector<Function> getFunctionList() {
+    return functionList;
+  }
+
+  public void setFunctionList(Vector<Function> functionList) {
+    this.functionList = functionList;
+  }
+
+  public boolean isShowMarkPoint()
+  {
+    return showMarkPoint;
+  }
+
+  public void setShowMarkPoint(boolean status)
+  {
+    showMarkPoint = status;
   }
 
 
@@ -100,19 +123,24 @@ public class Plane extends JPanel implements MouseListener,
     double start = fx(0);
     double end = fx(getWidth() - 1);
     double middle = (start + end)/2;
-    for (Function f : functions) {
+
+    Color tempColor = g2d.getColor();
+    for (Function f : functionList) {
+      if (!f.isActive()) continue;
       double dx = fx(1) - fx(0);
+
+      g2d.setColor(f.getColor());
 
       // From the middle to the left
       double x0, y0, x1, y1;
       for (x0 = middle; x0 - dx >= start; x0 -= dx) {
-        y0 = parser.evaluate(f, "x", x0);
+        y0 = f.evaluate(x0);
 
         if (parser.getErrorCode() != Parser.SUCCESS)
           continue;
 
         x1 =  x0 - dx;
-        y1 = parser.evaluate(f, "x", x1);
+        y1 = f.evaluate(x1);
 
         if (parser.getErrorCode() != Parser.SUCCESS)
           continue;
@@ -122,13 +150,13 @@ public class Plane extends JPanel implements MouseListener,
 
       // From the middle to the right
       for (x0 = middle; x0 + dx <= end; x0 += dx) {
-        y0 = parser.evaluate(f, "x", x0);
+        y0 = f.evaluate(x0);
 
         if (parser.getErrorCode() != Parser.SUCCESS)
           continue;
 
         x1 =  x0 - dx;
-        y1 = parser.evaluate(f, "x", x1);
+        y1 = f.evaluate(x1);
 
         if (parser.getErrorCode() != Parser.SUCCESS)
           continue;
@@ -137,34 +165,16 @@ public class Plane extends JPanel implements MouseListener,
       }
 
     }
-  }
 
-  /**
-   * Add the function f to the functions list to be plotted.
-   * @param f a Function object
-   */
-  public void addFunction(Function f)
-  {
-    functions.add(f);
-  }
+    g2d.setColor(tempColor);
 
-  /**
-   * Remove function f from the functions list to be plotted.
-   * @param f a Function object
-   */
-  public void removeFunction(Function f)
-  {
-    if (f != null)
-      functions.remove(f);
-  }
-
-
-  /**
-   * Removes all the functions in the functions list.
-   */
-  public void clearFunctions()
-  {
-    functions.clear();
+    // Mark point
+    if (isShowMarkPoint()) {
+      g2d.setColor(Color.RED);
+      int x = ix(markPoint.x());
+      int y = iy(markPoint.y());
+      g2d.fillOval(x - 5, y - 5 , 10, 10);
+    }
   }
 
 
@@ -392,6 +402,36 @@ public class Plane extends JPanel implements MouseListener,
     repaint();
   }
 
+
+  /**
+   * Translate the plane and set point (x, y) as the center of the viewport.
+   * @param x
+   * @param y
+   */
+  public void translate(double x, double y)
+  {
+    int cx = getWidth()/2;
+    int cy = getHeight()/2;
+    int dx = ix(x) - cx;
+    int dy = iy(y) - cy;
+
+    centerX -= dx;
+    centerY -= dy;
+
+    repaint();
+  }
+
+  /**
+   * Draw a point (x, y) in the plane to mark a solution.
+   * @param x
+   * @param y
+   */
+  public void mark(double x, double y)
+  {
+    showMarkPoint = true;
+    markPoint = new Point2D(x, y);
+    repaint();
+  }
 
   /**
    * Draw grid in the plane.

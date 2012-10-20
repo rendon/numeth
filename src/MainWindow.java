@@ -17,12 +17,15 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
-import java.util.Locale;
-import java.util.ResourceBundle;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.util.*;
+
 import edu.inforscience.lang.*;
 
 import java.io.*;
@@ -32,8 +35,15 @@ import edu.inforscience.math.*;
 import edu.inforscience.math.Math;
 
 public class MainWindow extends JFrame {
-  private JMenuBar menuBar;
+  public static final int BEST_SUITED         = 0;
+  public static final int BRUTE_FORCE         = 1;
+  public static final int BISECTION           = 2;
+  public static final int NEWTON_RAPHSON      = 3;
+  public static final int SECANT              = 4;
+  public static final int FIXED_POINT         = 5;
+  public static final int AITKEN_ACCELERATION = 6;
 
+  private JMenuBar menuBar;
   private JMenu fileMenu;
   private JMenuItem saveLogAction;
   private JMenuItem exportGraphAction;
@@ -45,6 +55,7 @@ public class MainWindow extends JFrame {
   private JMenu helpMenu;
   private JMenuItem aboutAction;
 
+  private String lastFunctionName;
 
   private JToolBar toolBar;
   private JTextPane logPane;
@@ -52,10 +63,13 @@ public class MainWindow extends JFrame {
   private JList solutionsList;
   private JTextField errorText;
   private JTextField expressionText;
-  private JSplitPane splitPane;
+  private JSplitPane mainVerticalSplit;
   private JComboBox methodList;
   private JSplitPane leftPanel;
+  private JSplitPane mainHorizontalSplit;
+  private Vector<Function> functionList;
 
+  private CheckBoxList functionCheckList;
   private JPanel planeContainer;
   private JToolBar planeToolbar;
   private Plane plane;
@@ -66,11 +80,14 @@ public class MainWindow extends JFrame {
   private JButton showAxisButton;
   private JButton showGridButton;
 
+  private ButtonGroup functionButtonGroup;
+
   private Locale currentLocale;
   private ResourceBundle messages;
 
   private Function function;
   private PrintWriter writer;
+  private String[] methodNames;
 
   public MainWindow()
   {
@@ -84,6 +101,7 @@ public class MainWindow extends JFrame {
     // Action handler object
     ActionHandler actionHandler = new ActionHandler();
 
+    functionButtonGroup = new ButtonGroup();
 
     // Resources for internationalization
     currentLocale = new Locale("en", "US");
@@ -99,10 +117,43 @@ public class MainWindow extends JFrame {
     menuBar.add(helpMenu);
     setJMenuBar(menuBar);
 
-    expressionText  = new JTextField(50);
-    errorText       = new JTextField(10);
+    errorText = new JTextField(15);
+    errorText.addActionListener(actionHandler);
+    errorText.getDocument().addDocumentListener(new DocumentListener() {
+      @Override
+      public void insertUpdate(DocumentEvent documentEvent) {
+        errorText.setBackground(Color.WHITE);
+      }
 
+      @Override
+      public void removeUpdate(DocumentEvent documentEvent) {
+        errorText.setBackground(Color.WHITE);
+      }
+
+      @Override
+      public void changedUpdate(DocumentEvent documentEvent) {
+        errorText.setBackground(Color.WHITE);
+      }
+    });
+
+    expressionText  = new JTextField(45);
     expressionText.addActionListener(actionHandler);
+    expressionText.getDocument().addDocumentListener(new DocumentListener() {
+      @Override
+      public void insertUpdate(DocumentEvent documentEvent) {
+        expressionText.setBackground(Color.WHITE);
+      }
+
+      @Override
+      public void removeUpdate(DocumentEvent documentEvent) {
+        expressionText.setBackground(Color.WHITE);
+      }
+
+      @Override
+      public void changedUpdate(DocumentEvent documentEvent) {
+        expressionText.setBackground(Color.WHITE);
+      }
+    });
 
     solveButton = new JButton(messages.getString("MainWindow.solveButton"));
     solveButton.addActionListener(actionHandler);
@@ -117,14 +168,16 @@ public class MainWindow extends JFrame {
 
 
     // Method list
-    String[] methods = new String[] {messages.getString("Method.bestSuited"),
-                                     messages.getString("Method.linear"),
-                                     messages.getString("Method.bisection"),
-                                     messages.getString("Method.newton.raphson"),
-                                     messages.getString("Method.secant")
-                                  };
+    methodNames = new String[] {messages.getString("Method.bestSuited"),
+                                messages.getString("Method.linear"),
+                                messages.getString("Method.bisection"),
+                                messages.getString("Method.newton.raphson"),
+                                messages.getString("Method.secant"),
+                                messages.getString("Method.fixedPoint"),
+                                messages.getString("Method.aitken")
+                              };
 
-    methodList = new JComboBox(methods);
+    methodList = new JComboBox(methodNames);
 
 
     toolBar.add(methodList);
@@ -135,14 +188,8 @@ public class MainWindow extends JFrame {
     add(toolBar, BorderLayout.PAGE_START);
 
 
-    // Solution log container
-    logPane = new JTextPane();
-    logPane.setBackground(Color.BLACK);
-    logPane.setForeground(Color.WHITE);
-    logPane.setText("Solution log goes here!");
-    JScrollPane logScrollPane = new JScrollPane(logPane,
-      JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-      JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+    lastFunctionName = "e";
+    functionList = new Vector<Function>();
 
 
     // Solution container
@@ -163,12 +210,28 @@ public class MainWindow extends JFrame {
 
     solutionsPanel.add(solutionsScrollPane);
 
+    functionCheckList = new CheckBoxList();
+    functionCheckList.addMouseListener(actionHandler);
+    JScrollPane buttonGroupScrollPane = new JScrollPane(functionCheckList,
+      JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+      JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+
+    JPanel functionPanel = new JPanel();
+    functionPanel.setLayout(new BoxLayout(functionPanel, BoxLayout.Y_AXIS));
+    functionPanel.add(
+      new JLabel(
+        messages.getString("MainWindow.functionList")
+      )
+    );
+    functionPanel.add(buttonGroupScrollPane);
+
 
     // Left panel
     leftPanel = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-    leftPanel.setTopComponent(logScrollPane);
+    leftPanel.setTopComponent(functionPanel);
     leftPanel.setBottomComponent(solutionsPanel);
-    leftPanel.setDividerLocation(350);
+    leftPanel.setDividerLocation(200);
 
     // Plane container
     zoomInButton    = new JButton(new ImageIcon("pictures/zoom-in.png"));
@@ -182,6 +245,8 @@ public class MainWindow extends JFrame {
     zoomOutButton.addActionListener(actionHandler);
     zoomResetButton.addActionListener(actionHandler);
     zoomInButton.addActionListener(actionHandler);
+
+    solutionsList.addMouseListener(actionHandler);
 
 
 
@@ -199,52 +264,79 @@ public class MainWindow extends JFrame {
     planeContainer.add(planeToolbar, BorderLayout.PAGE_START);
     planeContainer.add(plane, BorderLayout.CENTER);
 
-    splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-    splitPane.setLeftComponent(leftPanel);
-    splitPane.setRightComponent(planeContainer);
+    mainVerticalSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+    mainVerticalSplit.setLeftComponent(leftPanel);
+    mainVerticalSplit.setRightComponent(planeContainer);
 
-    splitPane.setOneTouchExpandable(true);
-    splitPane.setDividerLocation(200);
+    mainVerticalSplit.setOneTouchExpandable(true);
+    mainVerticalSplit.setDividerLocation(200);
 
-    add(splitPane, BorderLayout.CENTER);
+
+    // Solution log container
+    logPane = new JTextPane();
+    logPane.setBackground(Color.BLACK);
+    logPane.setForeground(Color.WHITE);
+    logPane.setText("Solution log goes here!");
+    JScrollPane logScrollPane = new JScrollPane(logPane,
+      JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+      JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+    mainHorizontalSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+    mainHorizontalSplit.setTopComponent(mainVerticalSplit);
+    mainHorizontalSplit.setBottomComponent(logScrollPane);
+    mainHorizontalSplit.setDividerLocation(500);
+    mainHorizontalSplit.setOneTouchExpandable(true);
+
+    add(mainHorizontalSplit, BorderLayout.CENTER);
 
    writer = new PrintWriter(System.out, true);
   }
 
 
-  class ActionHandler implements ActionListener {
+  class ActionHandler implements ActionListener, MouseListener {
+    @SuppressWarnings("unchecked")
     @Override
     public void actionPerformed(ActionEvent event) {
       if (event.getSource() == solveButton ||
-          event.getSource() == expressionText) {
+          event.getSource() == expressionText ||
+          event.getSource() == errorText) {
 
         String expression = expressionText.getText();
         Parser parser = new Parser();
-        int method = methodList.getSelectedIndex();
 
         if (!expression.equals("") && parser.validate(expression)) {
-          function = new Function(expression);
-          plane.clearFunctions();
-          plane.addFunction(function);
+          lastFunctionName = nextFunctionName();
+          function = new Function(expression, lastFunctionName);
+          function.setColor(nextFunctionColor());
+          functionList.add(function);
+          plane.setFunctionList(functionList);
+          plane.setShowMarkPoint(false);
           plane.plot();
 
-          double epsilon = 1e-3;
 
-          if (!errorText.getText().equals(""))
-            epsilon = Double.parseDouble(errorText.getText());
-
-          //BruteForce bruteForce = new BruteForce(function);
-          //ArrayList<Solution> solutions = bruteForce.solve(-100 - 1e-10,  100);
-
-          Bisection bisection = new Bisection(function);
-          ArrayList<Solution> solutions = bisection.solve(-100 - 1e-10, 100, epsilon);
-          String[] S = new String[solutions.size()];
-          for (int i = 0; i < solutions.size(); i++) {
-            Solution sol = solutions.get(i);
-            S[i] = "" + Math.round(sol.getX(), 6);
+          int length = functionList.size();
+          CheckBoxListEntry[] checkBoxes = new CheckBoxListEntry[length];
+          for (int i = 0; i < functionList.size(); i++) {
+            Function f = functionList.get(i);
+            checkBoxes[i] = new CheckBoxListEntry(f.toString(), true);
           }
 
-          solutionsList.setListData(S);
+          functionCheckList.setListData(checkBoxes);
+
+          double epsilon = 1e-3;
+          if (!errorText.getText().equals("")) {
+            try {
+              epsilon = Double.parseDouble(errorText.getText());
+            } catch (NumberFormatException nfe) {
+              errorText.setBackground(new Color(255, 170, 170));
+            }
+          }
+
+          int method = methodList.getSelectedIndex();
+          solve(function, method, epsilon);
+
+        } else {
+          expressionText.setBackground(new Color(255, 170, 170));
         }
 
       } else if (event.getSource() == showAxisButton) {
@@ -264,6 +356,182 @@ public class MainWindow extends JFrame {
 
       }
     }
+
+    @Override
+    public void mouseClicked(MouseEvent event)
+    {
+      if (event.getSource() == solutionsList) {
+        JList list = (JList)event.getSource();
+        if (event.getClickCount() == 2) {
+          if (list.isSelectionEmpty()) return;
+          double x = Double.parseDouble((String)list.getSelectedValue());
+          plane.translate(x, 0);
+          plane.mark(x, 0);
+        }
+      } else if (event.getSource() == functionCheckList) {
+        if (functionList.size() == 0) return;
+
+        plane.setShowMarkPoint(false);
+        CheckBoxList list = (CheckBoxList)event.getSource();
+        if (event.getClickCount() == 1) {
+          int index = list.getSelectedIndex();
+          CheckBoxListEntry entry = (CheckBoxListEntry)list.getSelectedValue();
+          functionList.get(index).setActive(entry.isSelected());
+          plane.setFunctionList(functionList);
+          plane.plot();
+
+        } else if (event.getClickCount() == 2) {
+          int index = list.getSelectedIndex();
+          functionList.get(index).setActive(true);
+          plane.setFunctionList(functionList);
+          plane.plot();
+
+          CheckBoxListEntry entry = (CheckBoxListEntry)list.getSelectedValue();
+          entry.setSelected(true);
+          list.updateUI();
+
+          solve(functionList.get(index), index + 1, 1e-7);
+        }
+
+      }
+    }
+
+    @Override
+    public void mousePressed(MouseEvent mouseEvent) {
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent mouseEvent) {
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent mouseEvent) {
+    }
+
+    @Override
+    public void mouseExited(MouseEvent mouseEvent) {
+    }
+  }
+
+
+  // Utility
+  private Color nextFunctionColor()
+  {
+    Random random = new Random();
+    int r = random.nextInt()%255;
+    int g = random.nextInt()%255;
+    int b = random.nextInt()%255;
+
+    if (r < 0) r = -r;
+    if (g < 0) g = -g;
+    if (b < 0) b = -b;
+
+    writer.println("r = " + r);
+    writer.println("g = " + g);
+    writer.println("b = " + b);
+    return new Color(r, g, b);
+  }
+
+  private String nextFunctionName()
+  {
+    String name = "";
+    int length = lastFunctionName.length();
+    char ch = lastFunctionName.charAt(length - 1);
+    if (ch < 'w') {
+      ch++;
+      for (int i = 0; i + 1 < length; i++)
+        name += lastFunctionName.charAt(i);
+      name += ch;
+    } else {
+      for (int i = 0; i < length + 1; i++)
+        name += "f";
+    }
+
+    return name;
+  }
+
+  private void solve(Function f, int method, double epsilon)
+  {
+    ArrayList<Solution> solutions;
+    String[] S = new String[]{};
+
+    switch (method) {
+      case BEST_SUITED:
+      case BRUTE_FORCE:
+        BruteForce bruteForce = new BruteForce(function);
+        solutions = bruteForce.solve(-100 - 1e-10,  100);
+        S = new String[solutions.size()];
+
+        for (int i = 0; i < solutions.size(); i++) {
+          Solution s = solutions.get(i);
+          S[i] = "[" + Math.round(s.getA(), 6) + ", " +
+                  Math.round(s.getB(), 6) + "] : " +
+                  Math.round(s.getX(), 6);
+        }
+        break;
+
+      case BISECTION:
+        Bisection bisection = new Bisection(f);
+        solutions = bisection.solve(-100, 100, epsilon);
+        S = new String[solutions.size()];
+        for (int i = 0; i < solutions.size(); i++) {
+          Solution sol = solutions.get(i);
+          S[i] = "" + Math.round(sol.getX(), 6);
+        }
+        break;
+
+    };
+
+    solutionsList.setListData(S);
+  }
+}
+
+
+
+// Represents items in the list that can be selected
+
+class CheckListItem
+{
+  private String  label;
+  private boolean isSelected = false;
+
+  public CheckListItem(String label)
+  {
+    this.label = label;
+  }
+
+  public boolean isSelected()
+  {
+    return isSelected;
+  }
+
+  public void setSelected(boolean isSelected)
+  {
+    this.isSelected = isSelected;
+  }
+
+  public String toString()
+  {
+    return label;
+  }
+}
+
+// Handles rendering cells in the list using a check box
+
+class CheckListRenderer extends JCheckBox
+  implements ListCellRenderer
+{
+  public Component getListCellRendererComponent(
+    JList list, Object value, int index,
+    boolean isSelected, boolean hasFocus)
+  {
+    setEnabled(list.isEnabled());
+    setSelected(((CheckListItem)value).isSelected());
+    setFont(list.getFont());
+    setBackground(list.getBackground());
+    setForeground(list.getForeground());
+    setText(value.toString());
+    return this;
   }
 }
 

@@ -26,22 +26,16 @@ import java.util.ArrayList;
 public class BruteForce {
 
   private Function function;
-  private Parser parser;
-
-  public BruteForce()
-  {
-    parser = new Parser();
-  }
+  public static final int MAX_INTERVALS = 997; // A prime number
 
   public BruteForce(Function f)
   {
     function = f;
-    parser = new Parser();
   }
 
   public double f(double x)
   {
-    return parser.evaluate(function, "x", x);
+    return function.evaluate(x);
   }
 
 
@@ -52,7 +46,8 @@ public class BruteForce {
    */
   public ArrayList<Solution> solve(double a, double b)
   {
-    double x, dx = 0.5, prev, current;
+    double x, prev, current;
+    double dx = (b - a)/MAX_INTERVALS;
     ArrayList<Solution> solutions = new ArrayList<Solution>();
 
     prev = f(a);

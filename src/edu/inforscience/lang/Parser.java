@@ -18,6 +18,8 @@
 */
 package edu.inforscience.lang;
 
+import java.io.*;
+import java.util.regex.*;
 import java.util.HashMap;
 import java.util.TreeSet;
 import java.util.logging.*;
@@ -37,6 +39,7 @@ public class Parser {
 
 
   private TreeSet<String> functions;
+  private PrintWriter writer;
 
   public static final double EPS                = 1e-8;
 
@@ -52,20 +55,27 @@ public class Parser {
   public static final int LAST_TOKEN_NOT_NULL   = 0x00000002;
   public static final int INVALID_EXPRESSION    = 0x00000003;
   public static final int INVALID_NUMBER        = 0x00000004;
-  public static final int INVALID_FUNCTION      = 0x00000005;
-  public static final int UNDEFINED_VARIABLE    = 0x00000005;
-  public static final int UNDEFINED_VALUE       = 0x00000005;
+  public static final int INVALID_VARIABLE_NAME = 0x00000005;
+  public static final int INVALID_FUNCTION      = 0x00000006;
+  public static final int UNDEFINED_VARIABLE    = 0x00000007;
+  public static final int UNDEFINED_VALUE       = 0x00000008;
 
   private static Logger logger = Logger.getLogger("edu.inforscience.lang");
 
   public Parser()
   {
     initialize();
+
+    // Utility
+    writer = new PrintWriter(System.out, true);
   }
   public Parser(String expression)
   {
     this.expression = new StringBuffer(expression);
     initialize();
+
+    // Utility
+    writer = new PrintWriter(System.out, true);
   }
 
 
@@ -121,7 +131,13 @@ public class Parser {
       token += expression.charAt(index);
       index++;
     } else if (index < length && Character.isLetter(expression.charAt(index))) {
-      while (index < length && !isDelimiter((expression.charAt(index)))) {
+      while (index < length) {
+        if (isDelimiter(expression.charAt(index))) {
+          break;
+        } else if (!Character.isLetter(expression.charAt(index))) {
+          setErrorCode(INVALID_VARIABLE_NAME);
+        }
+
         token += expression.charAt(index);
         index++;
       }
@@ -134,9 +150,20 @@ public class Parser {
         tokenType = VARIABLE;
 
     } else if (index < length && Character.isDigit(expression.charAt(index))) {
-      while (index < length && !isDelimiter((expression.charAt(index)))) {
-        token += expression.charAt(index);
-        index++;
+      Pattern pattern = Pattern.compile("[0-9]+(\\.[0-9]+([eE][+-]?[0-9]+)?)?");
+      Matcher matcher;
+
+      while (index < length) {
+        if (isDelimiter(expression.charAt(index)))
+          break;
+        token += expression.charAt(index++);
+
+        matcher = pattern.matcher(token);
+        if (!matcher.matches()) {
+          setErrorCode(INVALID_NUMBER);
+          writer.println("Herror!");
+          return false;
+        }
       }
 
       tokenType = NUMBER;
@@ -423,18 +450,6 @@ public class Parser {
     expression = new StringBuffer(temp);
 
     return result;
-  }
-
-  /**
-   * Returns the result of evaluating function f with variable = value.
-   * @param f the function to evaluate
-   * @param variable the name of the function's parameter, e.g. "x"
-   * @param value the value of the parameter, e.g. x = 3
-   * @return double, the result of evaluating the f
-   */
-  public double evaluate(Function f, String variable, double value) {
-    setVariable(variable, value);
-    return evaluate(f.getDefinition());
   }
 
 
