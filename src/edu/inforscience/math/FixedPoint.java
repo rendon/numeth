@@ -18,26 +18,55 @@
 */
 package edu.inforscience.math;
 
+import edu.inforscience.lang.Function;
+
 import java.util.ArrayList;
 
 public class FixedPoint {
-  public double f(double x)
+  private Function function;
+  private static final int MAX_ITERATIONS = 200;
+
+  public FixedPoint(Function f)
   {
-    return (7 * Math.pow(x, 6)) - Math.pow(x, 3) + (5 * Math.pow(x,2));
+    function = f;
   }
 
-  public void solve(double x0, double epsilon, ArrayList<Solution> solutions) {
+  public double f(double x)
+  {
+    return function.evaluate(x);
+  }
+  
+  public Solution find(double x0, double epsilon)
+  { 
     double x1;
-    while (true) {
+    int iterations = 0;
+    
+    while (iterations < MAX_ITERATIONS) {
       x1 = f(x0);
 
-      if (Math.abs(x1 - x0) < epsilon) {
-        solutions.add(new Solution(x0, x1, x1));
-        break;
-      }
+      if (Math.abs(x1 - x0) < epsilon)
+        return new Solution(x0, x1, x1);
 
       x0 = x1;
+
+      iterations++;
     }
+    return null;
+  }
+
+  public ArrayList<Solution> solve(double a, double b, double epsilon)
+  {
+    BruteForce bruteForce = new BruteForce(function);
+    ArrayList<Solution> possibleIntervals = bruteForce.solve(a, b);
+
+    ArrayList<Solution> roots = new ArrayList<Solution>();
+
+    for (int i = 0; i < possibleIntervals.size(); i++) {
+      Solution sol = possibleIntervals.get(i);
+      roots.add(find(sol.getX(), epsilon));
+    }
+
+    return roots;
   }
 }
 

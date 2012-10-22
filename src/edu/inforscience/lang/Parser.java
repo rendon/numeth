@@ -150,20 +150,26 @@ public class Parser {
         tokenType = VARIABLE;
 
     } else if (index < length && Character.isDigit(expression.charAt(index))) {
-      Pattern pattern = Pattern.compile("[0-9]+(\\.[0-9]+([eE][+-]?[0-9]+)?)?");
-      Matcher matcher;
 
       while (index < length) {
-        if (isDelimiter(expression.charAt(index)))
-          break;
-        token += expression.charAt(index++);
-
-        matcher = pattern.matcher(token);
-        if (!matcher.matches()) {
-          setErrorCode(INVALID_NUMBER);
-          writer.println("Herror!");
-          return false;
+        char at = expression.charAt(index);
+        if (at == '-') {
+          char prev = expression.charAt(index - 1);
+          if (prev != 'e' && prev != 'E')
+            break;
+        } else {
+          if (isDelimiter(at))
+            break;
         }
+
+        token += at;
+        index++;
+      }
+
+      if (!token.matches("([0-9]+([eE][+-]?[0-9]+)?)|([0-9]+[.][0-9]+([eE][+-]?[0-9]+)?)")) {
+        setErrorCode(INVALID_NUMBER);
+        writer.println("Horror!");
+        return false;
       }
 
       tokenType = NUMBER;
@@ -231,6 +237,8 @@ public class Parser {
    */
   private double sumAndSubtraction()
   {
+    if (getErrorCode() != SUCCESS) return 0;
+
     String operator;
     double temp;
     double result = productAndDivision();
@@ -259,6 +267,8 @@ public class Parser {
    */
   private double productAndDivision()
   {
+    if (getErrorCode() != SUCCESS) return 0;
+
     String operator;
     double temp, result;
 
@@ -285,8 +295,9 @@ public class Parser {
    */
   private double exponentAndFactorial()
   {
-    double result = 0;
+    if (getErrorCode() != SUCCESS) return 0;
 
+    double result = 0;
     result = sign();
     if (token.equals("^")) {
       nextToken();
@@ -307,6 +318,8 @@ public class Parser {
    */
   private double sign()
   {
+    if (getErrorCode() != SUCCESS) return 0;
+
     String operator = "";
     double result;
 
@@ -328,6 +341,8 @@ public class Parser {
    */
   private double subExpression()
   {
+    if (getErrorCode() != SUCCESS) return 0;
+
     double result;
     if (token.equals("(")) {
       nextToken();
@@ -350,6 +365,8 @@ public class Parser {
    */
   private double atom()
   {
+    if (getErrorCode() != SUCCESS) return 0;
+
     double result = 0;
     if (tokenType == NUMBER) {
       result = Double.parseDouble(token);

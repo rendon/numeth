@@ -114,10 +114,9 @@ public class Plane extends JPanel implements MouseListener,
     if (isShowGrid())
       drawGrid(g2d);
 
-    g2d.setColor(Color.BLUE);
     //g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
     //                     RenderingHints.VALUE_ANTIALIAS_ON);
-    g2d.setStroke(new BasicStroke(1f));
+    g2d.setStroke(new BasicStroke(1.2f));
 
     Parser parser = new Parser();
     double start = fx(0);
@@ -136,15 +135,17 @@ public class Plane extends JPanel implements MouseListener,
       for (x0 = middle; x0 - dx >= start; x0 -= dx) {
         y0 = f.evaluate(x0);
 
-        if (parser.getErrorCode() != Parser.SUCCESS)
+        if (Double.isNaN(y0))
           continue;
 
         x1 =  x0 - dx;
         y1 = f.evaluate(x1);
 
-        if (parser.getErrorCode() != Parser.SUCCESS)
+        if (Double.isNaN(y1))
           continue;
 
+        //writer.println("(" + x0 + ", " + y0);
+        //writer.println("(" + x1 + ", " + y1);
         g2d.drawLine(ix(x0), iy(y0), ix(x0), iy(y1));
       }
 
@@ -152,13 +153,13 @@ public class Plane extends JPanel implements MouseListener,
       for (x0 = middle; x0 + dx <= end; x0 += dx) {
         y0 = f.evaluate(x0);
 
-        if (parser.getErrorCode() != Parser.SUCCESS)
+        if (Double.isNaN(y0))
           continue;
 
         x1 =  x0 - dx;
         y1 = f.evaluate(x1);
 
-        if (parser.getErrorCode() != Parser.SUCCESS)
+        if (Double.isNaN(y1))
           continue;
 
         g2d.drawLine(ix(x0), iy(y0), ix(x0), iy(y1));

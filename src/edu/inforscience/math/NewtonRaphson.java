@@ -17,42 +17,60 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 package edu.inforscience.math;
-
+import edu.inforscience.lang.Function;
 import java.util.ArrayList;
 
 public class NewtonRaphson {
+
+  public static final int MAX_ITERATIONS = 200;
+  private Function function;
+
+  public NewtonRaphson(Function f)
+  {
+    function = f;
+  }
+
   public double f(double x)
   {
-    return -(3.79377 * Math.pow(x, 3)) +
-      (16.2965 * Math.pow(x, 2)) -
-      (21.963 * x) + 9.36 ;
+    return function.evaluate(x);
+  }
+
+
+  public Solution find(double x0, double epsilon)
+  {
+    int iterations = 0;
+    while (iterations < MAX_ITERATIONS) {
+      double fx = f(x0);
+      if (Math.abs(fx) < epsilon) {
+        return new Solution(x0, x0, x0);
+      } else {
+        // Slope or derivative of f(x) computed numerically
+        double slope = (f(x0 + 1e-9) - f(x0))/1e-9;
+        x0 = x0 - f(x0)/slope;
+      }
+
+    }
+
+    return null;
   }
 
   /**
    * Finds a real solution(if any) of f(x) with x0 as starting point.
-   * @param x0 initial guess
    * @param epsilon error tolerance
-   * @param iterations maximum number of iterations
-   * @param solutions ArrayList that stores the solutions
    */
-  public void solve(double x0, double epsilon,
-                    int iterations, ArrayList<Solution> solutions) {
-    while (true) {
-      double fx = f(x0);
-      if (Math.abs(fx) < epsilon) {
-        solutions.add(new Solution(x0, x0, x0));
-        break;
-      } else {
-        // Slope or derivative of f(x) computed numerically
-        double slope = (f(x0 + 1e-7) - f(x0))/1e-7;
-        x0 = x0 - f(x0)/slope;
-      }
+  public ArrayList<Solution> solve(double a, double b, double epsilon)
+  {
+    BruteForce bruteForce = new BruteForce(function);
+    ArrayList<Solution> possibleIntervals = bruteForce.solve(a, b);
 
+    ArrayList<Solution> roots = new ArrayList<Solution>();
 
-      iterations--;
-
-      if (iterations == 0)
-        break;
+    for (int i = 0; i < possibleIntervals.size(); i++) {
+      Solution sol = possibleIntervals.get(i);
+      roots.add(find(sol.getX(), epsilon));
     }
+
+    return roots;
   }
 }
+

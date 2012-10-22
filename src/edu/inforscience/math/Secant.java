@@ -18,33 +18,57 @@
 */
 package edu.inforscience.math;
 
+import edu.inforscience.lang.Function;
+
 import java.util.ArrayList;
 
 public class Secant {
 
-  public double f(double x)
+  private Function function;
+  private static final int MAX_ITERATIONS = 200;
+
+  public Secant(Function f)
   {
-    return -(3.79377 * Math.pow(x, 3)) +
-      (16.2965 * Math.pow(x, 2)) -
-      (21.963 * x) + 9.36 ;
+    function = f;
   }
 
-  public void solve(double x0, double x1, double epsilon,
-                    int iterations, ArrayList<Solution> solutions) {
-    while (true) {
+  public double f(double x)
+  {
+    return function.evaluate(x);
+  }
+
+  public Solution find(double x0, double x1, double epsilon)
+  {
+    int iterations = 0;
+    while (iterations < MAX_ITERATIONS) {
       double fx = f(x1);
-      if (Math.abs(fx) < epsilon) {
-        solutions.add(new Solution(x0, x1, x1));
-        break;
-      }
+
+      if (Math.abs(fx) < epsilon)
+        return new Solution(x0, x1, x1);
 
       double temp = x1;
       x1 = x1 - (x1 - x0)/(f(x1) - f(x0)) * f(x1);
       x0 = temp;
-      iterations--;
 
-      if (iterations == 0)
-        break;
+      iterations++;
     }
+
+    return null;
+  }
+
+  public ArrayList<Solution> solve(double a, double b, double epsilon)
+  {
+    BruteForce bruteForce = new BruteForce(function);
+    ArrayList<Solution> possibleIntervals = bruteForce.solve(a, b);
+
+    ArrayList<Solution> roots = new ArrayList<Solution>();
+
+    for (int i = 0; i < possibleIntervals.size(); i++) {
+      Solution sol = possibleIntervals.get(i);
+      roots.add(find(sol.getA(), sol.getB(), epsilon));
+    }
+
+    return roots;
   }
 }
+

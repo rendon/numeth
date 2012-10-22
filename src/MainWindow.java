@@ -43,6 +43,8 @@ public class MainWindow extends JFrame {
   public static final int FIXED_POINT         = 5;
   public static final int AITKEN_ACCELERATION = 6;
 
+  public static final int MAX_COLORS          = 25;
+
   private JMenuBar menuBar;
   private JMenu fileMenu;
   private JMenuItem saveLogAction;
@@ -88,6 +90,8 @@ public class MainWindow extends JFrame {
   private Function function;
   private PrintWriter writer;
   private String[] methodNames;
+  private Color[] graphColors;
+  private int colorIndex;
 
   public MainWindow()
   {
@@ -289,7 +293,11 @@ public class MainWindow extends JFrame {
 
     add(mainHorizontalSplit, BorderLayout.CENTER);
 
-   writer = new PrintWriter(System.out, true);
+    graphColors = new Color[MAX_COLORS]; // Random color for the function graphs
+    colorIndex = 0;
+    generateRandomColors();
+
+    writer = new PrintWriter(System.out, true);
   }
 
 
@@ -318,7 +326,7 @@ public class MainWindow extends JFrame {
           CheckBoxListEntry[] checkBoxes = new CheckBoxListEntry[length];
           for (int i = 0; i < functionList.size(); i++) {
             Function f = functionList.get(i);
-            checkBoxes[i] = new CheckBoxListEntry(f.toString(), true);
+            checkBoxes[i] = new CheckBoxListEntry(f.toString(), f.isActive());
           }
 
           functionCheckList.setListData(checkBoxes);
@@ -332,6 +340,7 @@ public class MainWindow extends JFrame {
             }
           }
 
+          logPane.setText("");
           int method = methodList.getSelectedIndex();
           solve(function, method, epsilon);
 
@@ -415,20 +424,49 @@ public class MainWindow extends JFrame {
 
 
   // Utility
-  private Color nextFunctionColor()
+  private void generateRandomColors()
   {
     Random random = new Random();
-    int r = random.nextInt()%255;
-    int g = random.nextInt()%255;
-    int b = random.nextInt()%255;
+    for (int i = 0; i < MAX_COLORS; i++) {
+      boolean elegible = false;
+      int r = random.nextInt(255);
+      int g = random.nextInt(255);
+      int b = random.nextInt(255);
 
-    if (r < 0) r = -r;
-    if (g < 0) g = -g;
-    if (b < 0) b = -b;
+      while (i > 0) {
+        r = random.nextInt(230);
+        g = random.nextInt(230);
+        b = random.nextInt(230);
 
-    writer.println("r = " + r);
-    writer.println("g = " + g);
-    writer.println("b = " + b);
+        if ((r > 200 && g > 200) ||
+            (r > 200 && b > 200) ||
+            (g > 200 && b > 200))
+          continue;
+        int count = 0;
+        for (int j = 0; j < i; j++) {
+          if ((Math.abs(r - graphColors[j].getRed()) > 45) ||
+              (Math.abs(g - graphColors[j].getGreen()) > 45) ||
+              (Math.abs(b - graphColors[j].getBlue()) > 45))
+            count++;
+        }
+
+        if (count == i)
+          break;
+      }
+
+      graphColors[i] = new Color(r, g, b);
+    }
+  }
+  private Color nextFunctionColor()
+  {
+    if (colorIndex < MAX_COLORS)
+      return graphColors[colorIndex++];
+
+    Random random = new Random();
+    int r = random.nextInt(250);
+    int g = random.nextInt(250);
+    int b = random.nextInt(250);
+
     return new Color(r, g, b);
   }
 
@@ -464,9 +502,7 @@ public class MainWindow extends JFrame {
 
         for (int i = 0; i < solutions.size(); i++) {
           Solution s = solutions.get(i);
-          S[i] = "[" + Math.round(s.getA(), 6) + ", " +
-                  Math.round(s.getB(), 6) + "] : " +
-                  Math.round(s.getX(), 6);
+          S[i] = Math.round(s.getX(), 6) + "";
         }
         break;
 
@@ -476,10 +512,45 @@ public class MainWindow extends JFrame {
         S = new String[solutions.size()];
         for (int i = 0; i < solutions.size(); i++) {
           Solution sol = solutions.get(i);
-          S[i] = "" + Math.round(sol.getX(), 6);
+          S[i] = Math.round(sol.getX(), 6) + "";
+        }
+        break;
+      case NEWTON_RAPHSON:
+        NewtonRaphson newtonRaphson = new NewtonRaphson(f);
+        solutions = newtonRaphson.solve(-100, 100, epsilon);
+
+        S = new String[solutions.size()];
+        for (int i = 0; i < solutions.size(); i++) {
+          Solution sol = solutions.get(i);
+          if (sol == null)
+            S[i] = "NOT FOUND";
+          else
+            S[i] = Math.round(sol.getX(), 6) + "";
         }
         break;
 
+      case SECANT:
+        Secant secant = new Secant(f);
+        solutions = secant.solve(-100, 100, epsilon);
+
+        S = new String[solutions.size()];
+        for (int i = 0; i < solutions.size(); i++) {
+          Solution sol = solutions.get(i);
+          if (sol == null)
+            S[i] = "NOT FOUND";
+          else
+            S[i] = Math.round(sol.getX(), 6) + "";
+        }
+
+        break;
+
+      case FIXED_POINT:
+        logPane.setText("NO IMPLEMENTED YET");
+        break;
+
+      case AITKEN_ACCELERATION:
+        logPane.setText("NO IMPLEMENTED YET");
+        break;
     };
 
     solutionsList.setListData(S);

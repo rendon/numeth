@@ -107,7 +107,10 @@ public class Function {
   public double evaluate(double x)
   {
     parser.setVariable("x", x);
-    return parser.evaluate();
+    double fx = parser.evaluate();
+    if (parser.getErrorCode() != Parser.SUCCESS)
+      return Double.NaN;
+    return fx;
   }
 
   @Override

@@ -106,6 +106,12 @@ public class Math {
     return java.lang.Math.abs(x);
   }
 
+  public static int abs(int x)
+  {
+    if (x < 0) x = -x;
+    return x;
+  }
+
   public static double exp(double x)
   {
     return java.lang.Math.exp(x);
