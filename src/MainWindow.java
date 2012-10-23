@@ -93,6 +93,8 @@ public class MainWindow extends JFrame {
   private Color[] graphColors;
   private int colorIndex;
 
+  BackgroundClickHandler clickHandler;
+
   public MainWindow()
   {
     super("Numeth");
@@ -298,8 +300,9 @@ public class MainWindow extends JFrame {
     generateRandomColors();
 
     writer = new PrintWriter(System.out, true);
-  }
 
+    clickHandler = new BackgroundClickHandler();
+  }
 
   class ActionHandler implements ActionListener, MouseListener {
     @SuppressWarnings("unchecked")
@@ -322,6 +325,7 @@ public class MainWindow extends JFrame {
           plane.plot();
 
 
+          // Update function checkbox
           int length = functionList.size();
           CheckBoxListEntry[] checkBoxes = new CheckBoxListEntry[length];
           for (int i = 0; i < functionList.size(); i++) {
@@ -330,6 +334,8 @@ public class MainWindow extends JFrame {
           }
 
           functionCheckList.setListData(checkBoxes);
+
+
 
           double epsilon = 1e-3;
           if (!errorText.getText().equals("")) {
@@ -380,26 +386,54 @@ public class MainWindow extends JFrame {
       } else if (event.getSource() == functionCheckList) {
         if (functionList.size() == 0) return;
 
+        solutionsList.setListData(new String[]{});
         plane.setShowMarkPoint(false);
-        CheckBoxList list = (CheckBoxList)event.getSource();
-        if (event.getClickCount() == 1) {
-          int index = list.getSelectedIndex();
-          CheckBoxListEntry entry = (CheckBoxListEntry)list.getSelectedValue();
-          functionList.get(index).setActive(entry.isSelected());
-          plane.setFunctionList(functionList);
-          plane.plot();
 
-        } else if (event.getClickCount() == 2) {
+        CheckBoxList list = (CheckBoxList)event.getSource();
+
+        if (event.getClickCount() == 1) {
+          clickHandler = new BackgroundClickHandler();
+
+          try {
+            clickHandler.execute();
+          } catch(Exception e) {
+            writer.println("Here!");
+          }
+        }
+
+        if (event.getClickCount() == 2) {
+          clickHandler.cancel(true);
+
+          writer.println("2 Click");
           int index = list.getSelectedIndex();
           functionList.get(index).setActive(true);
           plane.setFunctionList(functionList);
           plane.plot();
 
+          int length = functionList.size();
+          CheckBoxListEntry[] checkBoxes = new CheckBoxListEntry[length];
+          for (int i = 0; i < functionList.size(); i++) {
+            Function f = functionList.get(i);
+            checkBoxes[i] = new CheckBoxListEntry(f.toString(), f.isActive());
+          }
+
+          functionCheckList.setListData(checkBoxes);
+
           CheckBoxListEntry entry = (CheckBoxListEntry)list.getSelectedValue();
           entry.setSelected(true);
           list.updateUI();
 
-          solve(functionList.get(index), index + 1, 1e-7);
+          expressionText.setText(functionList.get(index).getDefinition());
+
+          int method = methodList.getSelectedIndex();
+          double epsilon = 1e-3;
+          try {
+            epsilon = Double.parseDouble(errorText.getText());
+          } catch(NumberFormatException nfe) {
+            epsilon = 1e-3;
+          }
+
+          solve(functionList.get(index), method, epsilon);
         }
 
       }
@@ -421,6 +455,34 @@ public class MainWindow extends JFrame {
     public void mouseExited(MouseEvent mouseEvent) {
     }
   }
+
+    class BackgroundClickHandler extends SwingWorker<Integer, Integer> {
+      @Override
+      protected Integer doInBackground() throws Exception {
+        Thread.sleep(200);
+        writer.println("1 Click");
+        CheckBoxList list = functionCheckList;
+        int index = list.getSelectedIndex();
+        CheckBoxListEntry entry = (CheckBoxListEntry)list.getSelectedValue();
+        solutionsList.setListData(new String[]{});
+        functionList.get(index).setActive(entry.isSelected());
+        plane.setFunctionList(functionList);
+        plane.plot();
+
+        // Update function checkbox
+        int length = functionList.size();
+        CheckBoxListEntry[] checkBoxes = new CheckBoxListEntry[length];
+        for (int i = 0; i < functionList.size(); i++) {
+          Function f = functionList.get(i);
+          checkBoxes[i] = new CheckBoxListEntry(f.toString(), f.isActive());
+        }
+
+        functionCheckList.setListData(checkBoxes);
+
+        return 0;
+      }
+
+    }
 
 
   // Utility
@@ -496,8 +558,8 @@ public class MainWindow extends JFrame {
     switch (method) {
       case BEST_SUITED:
       case BRUTE_FORCE:
-        BruteForce bruteForce = new BruteForce(function);
-        solutions = bruteForce.solve(-100 - 1e-10,  100);
+        BruteForce bruteForce = new BruteForce(f);
+        solutions = bruteForce.solve(-100,  100);
         S = new String[solutions.size()];
 
         for (int i = 0; i < solutions.size(); i++) {
@@ -553,6 +615,8 @@ public class MainWindow extends JFrame {
         break;
     };
 
+    logPane.setText("");
+    solutionsList.setListData(new String[]{});
     solutionsList.setListData(S);
   }
 }
