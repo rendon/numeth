@@ -64,6 +64,8 @@ public class MainWindow extends JFrame {
   private JButton solveButton;
   private JList solutionsList;
   private JTextField errorText;
+  private JTextField gxFunction;
+  private JLabel gxFunctionLabel;
   private JTextField expressionText;
   private JSplitPane mainVerticalSplit;
   private JComboBox methodList;
@@ -123,7 +125,7 @@ public class MainWindow extends JFrame {
     menuBar.add(helpMenu);
     setJMenuBar(menuBar);
 
-    errorText = new JTextField(15);
+    errorText = new JTextField(13);
     errorText.addActionListener(actionHandler);
     errorText.getDocument().addDocumentListener(new DocumentListener() {
       @Override
@@ -142,7 +144,12 @@ public class MainWindow extends JFrame {
       }
     });
 
-    expressionText  = new JTextField(45);
+    gxFunctionLabel = new JLabel("g(x)=");
+    gxFunctionLabel.setVisible(false);
+    gxFunction = new JTextField(13);
+    gxFunction.setVisible(false);
+
+    expressionText  = new JTextField(30);
     expressionText.addActionListener(actionHandler);
     expressionText.getDocument().addDocumentListener(new DocumentListener() {
       @Override
@@ -171,6 +178,8 @@ public class MainWindow extends JFrame {
     toolBar.add(expressionText);
     toolBar.add(new JLabel(messages.getString("MainWindow.errorLabel")));
     toolBar.add(errorText);
+    toolBar.add(gxFunctionLabel);
+    toolBar.add(gxFunction);
 
 
     // Method list
@@ -184,6 +193,7 @@ public class MainWindow extends JFrame {
                               };
 
     methodList = new JComboBox(methodNames);
+    methodList.addActionListener(actionHandler);
 
 
     toolBar.add(methodList);
@@ -317,25 +327,24 @@ public class MainWindow extends JFrame {
 
         if (!expression.equals("") && parser.validate(expression)) {
           lastFunctionName = nextFunctionName();
+          CheckBoxListEntry entry = null;
+
           function = new Function(expression, lastFunctionName);
           function.setColor(nextFunctionColor());
           functionList.add(function);
+          entry = new CheckBoxListEntry(function.toString(), true);
+          functionCheckList.addItem(entry);
+
+          int i = 0;
+          for (Function f : functionList) {
+            entry = (CheckBoxListEntry)functionCheckList.getItem(i);
+            f.setActive(entry.isSelected());
+            i++;
+          }
+
           plane.setFunctionList(functionList);
           plane.setShowMarkPoint(false);
           plane.plot();
-
-
-          // Update function checkbox
-          int length = functionList.size();
-          CheckBoxListEntry[] checkBoxes = new CheckBoxListEntry[length];
-          for (int i = 0; i < functionList.size(); i++) {
-            Function f = functionList.get(i);
-            checkBoxes[i] = new CheckBoxListEntry(f.toString(), f.isActive());
-          }
-
-          functionCheckList.setListData(checkBoxes);
-
-
 
           double epsilon = 1e-3;
           if (!errorText.getText().equals("")) {
@@ -349,6 +358,8 @@ public class MainWindow extends JFrame {
           logPane.setText("");
           int method = methodList.getSelectedIndex();
           solve(function, method, epsilon);
+
+          functionCheckList.updateUI();
 
         } else {
           expressionText.setBackground(new Color(255, 170, 170));
@@ -369,6 +380,16 @@ public class MainWindow extends JFrame {
       } else if (event.getSource() == zoomInButton) {
         plane.zoomIn(plane.getWidth()/2, plane.getHeight()/2);
 
+      } else if (event.getSource() == methodList) {
+        if (methodList.getSelectedIndex() == FIXED_POINT) {
+          gxFunction.setVisible(true);
+          gxFunctionLabel.setVisible(true);
+        } else {
+          gxFunction.setVisible(false);
+          gxFunctionLabel.setVisible(false);
+        }
+
+        toolBar.updateUI();
       }
     }
 
@@ -407,21 +428,9 @@ public class MainWindow extends JFrame {
           writer.println("2 Click");
           int index = list.getSelectedIndex();
           functionList.get(index).setActive(true);
+          ((CheckBoxListEntry)functionCheckList.getSelectedValue()).setSelected(true);
           plane.setFunctionList(functionList);
           plane.plot();
-
-          int length = functionList.size();
-          CheckBoxListEntry[] checkBoxes = new CheckBoxListEntry[length];
-          for (int i = 0; i < functionList.size(); i++) {
-            Function f = functionList.get(i);
-            checkBoxes[i] = new CheckBoxListEntry(f.toString(), f.isActive());
-          }
-
-          functionCheckList.setListData(checkBoxes);
-
-          CheckBoxListEntry entry = (CheckBoxListEntry)list.getSelectedValue();
-          entry.setSelected(true);
-          list.updateUI();
 
           expressionText.setText(functionList.get(index).getDefinition());
 
@@ -436,6 +445,7 @@ public class MainWindow extends JFrame {
           solve(functionList.get(index), method, epsilon);
         }
 
+        list.updateUI();
       }
     }
 
@@ -459,29 +469,22 @@ public class MainWindow extends JFrame {
     class BackgroundClickHandler extends SwingWorker<Integer, Integer> {
       @Override
       protected Integer doInBackground() throws Exception {
-        Thread.sleep(200);
+        Thread.sleep(150);
         writer.println("1 Click");
-        CheckBoxList list = functionCheckList;
-        int index = list.getSelectedIndex();
-        CheckBoxListEntry entry = (CheckBoxListEntry)list.getSelectedValue();
-        solutionsList.setListData(new String[]{});
-        functionList.get(index).setActive(entry.isSelected());
+
+        CheckBoxListEntry entry = null;
+        int i = 0;
+        for (Function f : functionList) {
+          entry = (CheckBoxListEntry)functionCheckList.getItem(i);
+          f.setActive(entry.isSelected());
+          i++;
+        }
+
         plane.setFunctionList(functionList);
         plane.plot();
 
-        // Update function checkbox
-        int length = functionList.size();
-        CheckBoxListEntry[] checkBoxes = new CheckBoxListEntry[length];
-        for (int i = 0; i < functionList.size(); i++) {
-          Function f = functionList.get(i);
-          checkBoxes[i] = new CheckBoxListEntry(f.toString(), f.isActive());
-        }
-
-        functionCheckList.setListData(checkBoxes);
-
         return 0;
       }
-
     }
 
 
@@ -607,7 +610,27 @@ public class MainWindow extends JFrame {
         break;
 
       case FIXED_POINT:
-        logPane.setText("NO IMPLEMENTED YET");
+        Function gx = null;
+        String str = gxFunction.getText();
+        Parser parser = new Parser();
+        if (parser.validate(str)) {
+          gx = new Function(str, "g(x)");
+        } else {
+          gxFunction.setBackground(new Color(255, 170, 170));
+          break;
+        }
+
+        FixedPoint fixedPoint = new FixedPoint(f, gx);
+        solutions = fixedPoint.solve(-100, 100, epsilon);
+
+        S = new String[solutions.size()];
+        for (int i = 0; i < solutions.size(); i++) {
+          Solution sol = solutions.get(i);
+          if (sol == null)
+            S[i] = "NOT FOUND";
+          else
+            S[i] = Math.round(sol.getX(), 6) + "";
+        }
         break;
 
       case AITKEN_ACCELERATION:

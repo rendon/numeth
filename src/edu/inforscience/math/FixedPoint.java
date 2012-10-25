@@ -23,17 +23,23 @@ import edu.inforscience.lang.Function;
 import java.util.ArrayList;
 
 public class FixedPoint {
-  private Function function;
-  private static final int MAX_ITERATIONS = 200;
+  public final int MAX_ITERATIONS = 200;
+  private Function function, gx;
 
-  public FixedPoint(Function f)
+  public FixedPoint(Function f, Function g)
   {
     function = f;
+    gx = g;
   }
 
   public double f(double x)
   {
     return function.evaluate(x);
+  }
+
+  public double g(double x)
+  {
+    return gx.evaluate(x);
   }
   
   public Solution find(double x0, double epsilon)
@@ -42,7 +48,7 @@ public class FixedPoint {
     int iterations = 0;
     
     while (iterations < MAX_ITERATIONS) {
-      x1 = f(x0);
+      x1 = g(x0);
 
       if (Math.abs(x1 - x0) < epsilon)
         return new Solution(x0, x1, x1);
@@ -51,6 +57,7 @@ public class FixedPoint {
 
       iterations++;
     }
+
     return null;
   }
 
@@ -63,7 +70,7 @@ public class FixedPoint {
 
     for (int i = 0; i < possibleIntervals.size(); i++) {
       Solution sol = possibleIntervals.get(i);
-      roots.add(find(sol.getX(), epsilon));
+      roots.add(find(sol.getX() - 0.003, epsilon));
     }
 
     return roots;

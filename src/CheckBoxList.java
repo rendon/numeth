@@ -48,10 +48,28 @@ import javax.swing.border.EmptyBorder;
 
 public class CheckBoxList extends JList {
 
+  private DefaultListModel defaultListModel;
+
+  public void addItem(CheckBoxListEntry entry)
+  {
+    defaultListModel.addElement(entry);
+  }
+
+  public void removeItem(int index)
+  {
+
+  }
+
+  Object getItem(int index)
+  {
+    return defaultListModel.get(index);
+  }
+
   public CheckBoxList() {
     super();
 
-    setModel(new DefaultListModel());
+    defaultListModel = new DefaultListModel();
+    setModel(defaultListModel);
     setCellRenderer(new CheckboxCellRenderer());
 
     addMouseListener(new MouseAdapter() {
