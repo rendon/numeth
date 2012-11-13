@@ -266,6 +266,23 @@ public class MainWindow extends JFrame {
 
     scaleText = new JTextField("1:1", 9);
     scaleText.addActionListener(actionHandler);
+    scaleText.getDocument().addDocumentListener(new DocumentListener() {
+      @Override
+      public void insertUpdate(DocumentEvent documentEvent) {
+        scaleText.setBackground(Color.WHITE);
+      }
+
+      @Override
+      public void removeUpdate(DocumentEvent documentEvent) {
+        scaleText.setBackground(Color.WHITE);
+      }
+
+      @Override
+      public void changedUpdate(DocumentEvent documentEvent) {
+        scaleText.setBackground(Color.WHITE);
+      }
+    });
+
 
     solutionsList.addMouseListener(actionHandler);
 
