@@ -38,14 +38,19 @@ public class Plane extends JPanel implements MouseListener,
   private int maxY;
   private int centerX;
   private int centerY;
-  private int factorIndex;
+  private int factorIndexX;
+  private int factorIndexY;
 
-  private double pixelSize;
-  private double gridInterval;
+  private double pixelWidth;
+  private double pixelHeight;
+  private double gridIntervalX;
+  private double gridIntervalY;
   private double[] factors;
 
-  private final double REAL_WIDTH  = 10;
-  private final double REAL_HEIGHT = 10;
+  private final double DEFAULT_REAL_WIDTH  = 10;
+  private final double DEFAULT_REAL_HEIGHT = 10;
+  private double realWidth;
+  private double realHeight;
 
   private boolean firstTime;
   private boolean showAxis;
@@ -70,13 +75,40 @@ public class Plane extends JPanel implements MouseListener,
     firstTime = true;
     functionList = new Vector<Function>();
 
+    setRealWidth(DEFAULT_REAL_WIDTH);
+    setRealHeight(DEFAULT_REAL_HEIGHT);
+
     // Grid drawing settings
-    gridInterval = 0.5;
+    gridIntervalX = 0.5;
+    gridIntervalY = 0.5;
+
     factors = new double[] {2, 2, 2.5};
-    factorIndex = 0;
+    factorIndexX = 0;
+    factorIndexY = 0;
     setShowAxis(true);
     setShowMarkPoint(false);
     writer = new PrintWriter(System.out, true);
+  }
+
+
+  public double getRealWidth()
+  {
+    return realWidth;
+  }
+
+  public void setRealWidth(double realWidth)
+  {
+    this.realWidth = realWidth;
+  }
+
+  public double getRealHeight()
+  {
+    return realHeight;
+  }
+
+  public void setRealHeight(double realHeight)
+  {
+    this.realHeight = realHeight;
   }
 
   public Vector<Function> getFunctionList() {
@@ -255,8 +287,40 @@ public class Plane extends JPanel implements MouseListener,
 
     centerX = maxX/2;
     centerY = maxY/2;
-    pixelSize = Math.max(REAL_WIDTH/maxX, REAL_HEIGHT/maxY);
 
+    pixelWidth = realWidth/Math.max(maxX, maxY);
+    pixelHeight = realHeight/Math.max(maxX, maxY);
+
+
+    factorIndexX = 0;
+    factorIndexY = 0;
+
+    gridIntervalX = 0.5;
+    int w = ix(gridIntervalX) - ix(0);
+    while (w < 50 || w > 150) {
+      if (w < 50) {
+        gridIntervalX *= factors[factorIndexX];
+        factorIndexX = (factorIndexX + 1)%factors.length;
+      } else if (w > 150) {
+        factorIndexX = (factorIndexX - 1 + factors.length)%factors.length;
+        gridIntervalX /= factors[factorIndexX];
+      }
+
+      w = ix(gridIntervalX) - ix(0);
+    }
+
+    gridIntervalY = 0.5;
+    int h = iy(0) - iy(gridIntervalY);
+    while (h < 50 || h > 150) {
+      if (h < 50) {
+        gridIntervalY *= factors[factorIndexY];
+        factorIndexY = (factorIndexY + 1)%factors.length;
+      } else if (h > 150) {
+        factorIndexY = (factorIndexY - 1 + factors.length)%factors.length;
+        gridIntervalY /= factors[factorIndexY];
+      }
+      h = iy(0) - iy(gridIntervalY);
+    }
   }
 
   /**
@@ -276,7 +340,7 @@ public class Plane extends JPanel implements MouseListener,
    */
   protected int ix(double x)
   {
-    return round(centerX + x/pixelSize);
+    return round(centerX + x/pixelWidth);
   }
 
   /**
@@ -286,7 +350,7 @@ public class Plane extends JPanel implements MouseListener,
    */
   protected int iy(double y)
   {
-    return round(centerY - y/pixelSize);
+    return round(centerY - y/pixelHeight);
   }
 
   /**
@@ -318,7 +382,7 @@ public class Plane extends JPanel implements MouseListener,
    * @return double, logical coordinate of x
    */
   public double fx(int x) {
-    return (double)(x - centerX) * pixelSize;
+    return (double)(x - centerX) * pixelWidth;
   }
 
   /**
@@ -328,7 +392,7 @@ public class Plane extends JPanel implements MouseListener,
    */
   public double fy(int y)
   {
-    return (double)(centerY - y) * pixelSize;
+    return (double)(centerY - y) * pixelHeight;
   }
 
 
@@ -352,15 +416,17 @@ public class Plane extends JPanel implements MouseListener,
    */
   public void zoomOut(int mx, int my)
   {
-    double ps = pixelSize;
+    double psx = pixelWidth;
+    double psy = pixelHeight;
     Point2D previous = new Point2D(fx(mx), fy(my));
-    pixelSize += pixelSize/10;
+    pixelWidth += pixelWidth/10;
+    pixelHeight += pixelHeight/10;
 
-    if (pixelSize > 1e7)
+    if (pixelWidth > 1e7 || pixelHeight > 1e7)
       return;
 
-    int dx = ix(previous.x()) - ix(previous.x(), ps);
-    int dy = iy(previous.y()) - iy(previous.y(), ps);
+    int dx = ix(previous.x()) - ix(previous.x(), psx);
+    int dy = iy(previous.y()) - iy(previous.y(), psy);
 
     centerX -= dx;
     centerY -= dy;
@@ -375,16 +441,18 @@ public class Plane extends JPanel implements MouseListener,
    */
   public void zoomIn(int mx, int my)
   {
-    double ps = pixelSize;
+    double psx = pixelWidth;
+    double psy = pixelHeight;
     Point2D previous = new Point2D(fx(mx), fy(my));
 
-    if (pixelSize < 1e-7)
+    if (pixelWidth < 1e-7 || pixelHeight < 1e-7)
       return;
 
-    pixelSize -= pixelSize/10;
+    pixelWidth -= pixelWidth/10;
+    pixelHeight -= pixelHeight/10;
 
-    int dx = ix(previous.x()) - ix(previous.x(), ps);
-    int dy = iy(previous.y()) - iy(previous.y(), ps);
+    int dx = ix(previous.x()) - ix(previous.x(), psx);
+    int dy = iy(previous.y()) - iy(previous.y(), psy);
 
     centerX -= dx;
     centerY -= dy;
@@ -392,15 +460,32 @@ public class Plane extends JPanel implements MouseListener,
     repaint();
   }
 
+
   /**
    * Restore the original scale.
    */
   public void resetZoom()
   {
+    setRealWidth(DEFAULT_REAL_WIDTH);
+    setRealHeight(DEFAULT_REAL_HEIGHT);
     initGraphics();
-    factorIndex = 0;
-    gridInterval = 0.5;
+
     repaint();
+  }
+
+
+  /**
+   * Set the scale of the plane in the form a:b.
+   * Calling this method reset the zoom too.
+   * @param a number of units in x
+   * @param b number of units in y
+   */
+  public void setScale(int a, int b)
+  {
+    resetZoom();
+    double factor = (double)a/(double)b;
+    setRealWidth(getRealWidth() * factor);
+    initGraphics();
   }
 
 
@@ -445,24 +530,20 @@ public class Plane extends JPanel implements MouseListener,
     double right = fx(getWidth() - 1);
     double bottom = fy(getHeight() - 1);
 
-    int w = ix(gridInterval) - ix(0);
+    int w = ix(gridIntervalX) - ix(0);
     if (w < 50) {
-      gridInterval *= factors[factorIndex];
-      factorIndex = (factorIndex + 1)%factors.length;
+      gridIntervalX *= factors[factorIndexX];
+      factorIndexX = (factorIndexX + 1)%factors.length;
     } else if (w > 150) {
-      factorIndex = (factorIndex - 1 + factors.length)%factors.length;
-      gridInterval /= factors[factorIndex];
+      factorIndexX = (factorIndexX - 1 + factors.length)%factors.length;
+      gridIntervalX /= factors[factorIndexX];
     }
 
     int cX = ix(0);
-    int interval = java.lang.Math.max(1, ix(gridInterval) - cX);
+    int interval = java.lang.Math.max(1, ix(gridIntervalX) - cX);
     int mod = cX % interval;
-    double startX = fx(mod) - (fx(mod) % gridInterval) - gridInterval;
+    double startX = fx(mod) - (fx(mod) % gridIntervalX) - gridIntervalX;
 
-    int cY = iy(0);
-    interval = java.lang.Math.max(1, iy(gridInterval) - cY);
-    mod = cY % interval;
-    double startY = fy(mod) - (fy(mod) % gridInterval) + gridInterval;
 
     Stroke dash = new BasicStroke(0.5f, BasicStroke.CAP_SQUARE,
                                   BasicStroke.JOIN_MITER, 10,
@@ -471,11 +552,27 @@ public class Plane extends JPanel implements MouseListener,
 
     g2d.setStroke(dash);
     g2d.setColor(new Color(140, 140, 140));
-    for (double i = startX; i <= right; i += gridInterval)
+    for (double i = startX; i <= right; i += gridIntervalX)
       if (ix(i) != ix(0) || !isShowAxis())
         g2d.drawLine(ix(i), iy(top), ix(i), iy(bottom));
 
-    for (double i = startY; i >= bottom; i -= gridInterval)
+
+
+    int h = iy(0) - iy(gridIntervalY);
+    if (h < 50) {
+      gridIntervalY *= factors[factorIndexY];
+      factorIndexY = (factorIndexY + 1)%factors.length;
+    } else if (h > 150) {
+      factorIndexY = (factorIndexY - 1 + factors.length)%factors.length;
+      gridIntervalY /= factors[factorIndexY];
+    }
+
+    int cY = iy(0);
+    interval = java.lang.Math.max(1, iy(gridIntervalY) - cY);
+    mod = cY % interval;
+    double startY = fy(mod) - (fy(mod) % gridIntervalY) + gridIntervalY;
+
+    for (double i = startY; i >= bottom; i -= gridIntervalY)
       if (iy(i) != iy(0) || !isShowAxis())
         g2d.drawLine(ix(left), iy(i), ix(right), iy(i));
 
@@ -492,29 +589,25 @@ public class Plane extends JPanel implements MouseListener,
     double right = fx(getWidth() - 1);
     double bottom = fy(getHeight() - 1);
 
-    int w = ix(gridInterval) - ix(0);
+    int w = ix(gridIntervalX) - ix(0);
     if (w < 50) {
-      gridInterval *= factors[factorIndex];
-      factorIndex = (factorIndex + 1)%factors.length;
+      gridIntervalX *= factors[factorIndexX];
+      factorIndexX = (factorIndexX + 1)%factors.length;
     } else if (w > 150) {
-      factorIndex = (factorIndex - 1 + factors.length)%factors.length;
-      gridInterval /= factors[factorIndex];
+      factorIndexX = (factorIndexX - 1 + factors.length)%factors.length;
+      gridIntervalX /= factors[factorIndexX];
     }
 
     int cX = ix(0);
-    int interval = java.lang.Math.max(1, ix(gridInterval) - cX);
+    int interval = java.lang.Math.max(1, ix(gridIntervalX) - cX);
     int mod = cX % interval;
-    double startX = fx(mod) - (fx(mod) % gridInterval) - gridInterval;
+    double startX = fx(mod) - (fx(mod) % gridIntervalX) - gridIntervalX;
 
-    int cY = iy(0);
-    interval = java.lang.Math.max(1, iy(gridInterval) - cY);
-    mod = cY % interval;
-    double startY = fy(mod) - (fy(mod) % gridInterval) + gridInterval;
 
     g2d.setStroke(new BasicStroke(1f));
     g2d.setColor(Color.BLACK);
 
-    for (double i = startX; i <= right; i += gridInterval) {
+    for (double i = startX; i <= right; i += gridIntervalX) {
       if (ix(i) == ix(0)) {
         g2d.drawLine(ix(i), iy(top), ix(i), iy(bottom));
 
@@ -532,7 +625,23 @@ public class Plane extends JPanel implements MouseListener,
       g2d.drawLine(ix(i), iy(0), ix(i), iy(0) + 12);
     }
 
-    for (double i = startY; i >= bottom; i -= gridInterval) {
+
+    int h = iy(0) - iy(gridIntervalY);
+    if (h < 50) {
+      gridIntervalY *= factors[factorIndexY];
+      factorIndexY = (factorIndexY + 1)%factors.length;
+    } else if (w > 150) {
+      factorIndexY = (factorIndexY - 1 + factors.length)%factors.length;
+      gridIntervalY /= factors[factorIndexY];
+    }
+
+
+    int cY = iy(0);
+    interval = java.lang.Math.max(1, iy(gridIntervalY) - cY);
+    mod = cY % interval;
+    double startY = fy(mod) - (fy(mod) % gridIntervalY) + gridIntervalY;
+
+    for (double i = startY; i >= bottom; i -= gridIntervalY) {
       if (iy(i) == iy(0)) {
         g2d.drawLine(ix(left), iy(i), ix(right), iy(i));
 

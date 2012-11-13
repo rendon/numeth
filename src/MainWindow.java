@@ -86,6 +86,8 @@ public class MainWindow extends JFrame {
 
   private ButtonGroup functionButtonGroup;
 
+  private JTextField scaleText;
+
   private Locale currentLocale;
   private ResourceBundle messages;
 
@@ -262,6 +264,9 @@ public class MainWindow extends JFrame {
     zoomResetButton.addActionListener(actionHandler);
     zoomInButton.addActionListener(actionHandler);
 
+    scaleText = new JTextField("1:1", 9);
+    scaleText.addActionListener(actionHandler);
+
     solutionsList.addMouseListener(actionHandler);
 
 
@@ -273,6 +278,8 @@ public class MainWindow extends JFrame {
     planeToolbar.add(zoomOutButton);
     planeToolbar.add(zoomResetButton);
     planeToolbar.add(zoomInButton);
+    planeToolbar.add(new JLabel("A:B"));
+    planeToolbar.add(scaleText);
 
 
     plane = new Plane();
@@ -380,6 +387,19 @@ public class MainWindow extends JFrame {
       } else if (event.getSource() == zoomInButton) {
         plane.zoomIn(plane.getWidth()/2, plane.getHeight()/2);
 
+      } else if (event.getSource() == scaleText) {
+        String input = scaleText.getText();
+        if (input.matches("[ ]*[0-9]+[ ]*:[ ]*[0-9]+[ ]*")) {
+          String[] tokens = input.split(":");
+          int a = Integer.parseInt(tokens[0].trim());
+          int b = Integer.parseInt(tokens[1].trim());
+
+          plane.setScale(a, b);
+
+        } else {
+          scaleText.setBackground(new Color(255, 170, 170));
+        }
+
       } else if (event.getSource() == methodList) {
         if (methodList.getSelectedIndex() == FIXED_POINT) {
           gxFunction.setVisible(true);
@@ -418,14 +438,12 @@ public class MainWindow extends JFrame {
           try {
             clickHandler.execute();
           } catch(Exception e) {
-            writer.println("Here!");
           }
         }
 
         if (event.getClickCount() == 2) {
           clickHandler.cancel(true);
 
-          writer.println("2 Click");
           int index = list.getSelectedIndex();
           functionList.get(index).setActive(true);
           ((CheckBoxListEntry)functionCheckList.getSelectedValue()).setSelected(true);
@@ -470,7 +488,6 @@ public class MainWindow extends JFrame {
       @Override
       protected Integer doInBackground() throws Exception {
         Thread.sleep(150);
-        writer.println("1 Click");
 
         CheckBoxListEntry entry = null;
         int i = 0;
